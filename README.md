@@ -2,7 +2,7 @@
 
 Interactive race plan for the 2026 Kentucky Derby Festival Marathon (Louisville, KY — April 25, 2026).
 
-**[Open the interactive plan →](./race_plan.html)** *(once GitHub Pages is enabled, this works at the live URL too)*
+**[Open the interactive plan → keanegleeson.github.io/kdf-marathon-2026](https://keanegleeson.github.io/kdf-marathon-2026/)**
 
 ## What's in here
 
