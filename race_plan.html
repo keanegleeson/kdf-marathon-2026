@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>2026 KDF Marathon - Race Plan</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:#0f1419; --panel:#171e26; --panel2:#1f2832; --line:#2a3441;
+    --ink:#e6edf3; --ink2:#9aa7b4; --accent:#ff7a45;
+    --green:#3fb950; --yellow:#d29922; --red:#f85149; --blue:#58a6ff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:14px}
+  header{padding:18px 22px;border-bottom:1px solid var(--line);background:var(--panel);display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+  header .title h1{margin:0 0 4px 0;font-size:20px;letter-spacing:.3px}
+  .sub{color:var(--ink2);font-size:13px}
+  .unit-toggle{display:inline-flex;background:var(--panel2);border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-shrink:0}
+  .unit-toggle button{background:transparent;color:var(--ink2);border:0;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px}
+  .unit-toggle button.active{background:var(--accent);color:#1a0f0a}
+  .container{display:grid;grid-template-columns:1fr 380px;gap:14px;padding:14px;height:calc(100vh - 90px)}
+  @media (max-width:1100px){.container{grid-template-columns:1fr;height:auto}}
+  .left{display:grid;grid-template-rows:1fr 240px;gap:14px;min-height:0}
+  #map{width:100%;height:100%;border-radius:10px;background:#222;min-height:380px}
+  .elev{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;position:relative}
+  .elev h3{margin:2px 0 4px 0;font-size:13px;color:var(--ink2);font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+  .right{background:var(--panel);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;overflow:hidden}
+  .goalbar{padding:12px;border-bottom:1px solid var(--line)}
+  .goalbar .label{font-size:11px;color:var(--ink2);letter-spacing:.6px;text-transform:uppercase;margin-bottom:8px}
+  .goals{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .goal{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 6px;text-align:center;cursor:pointer;transition:.15s}
+  .goal:hover{border-color:var(--accent)}
+  .goal.active{background:var(--accent);border-color:var(--accent);color:#1a0f0a}
+  .goal .t{font-size:11px;font-weight:700;letter-spacing:.5px}
+  .goal .v{font-size:15px;font-weight:700;margin-top:2px}
+  .goal .p{font-size:10px;opacity:.7;margin-top:1px}
+  .tabs{display:flex;border-bottom:1px solid var(--line);background:var(--panel2)}
+  .tab{flex:1;padding:10px 8px;text-align:center;cursor:pointer;font-size:12px;font-weight:600;color:var(--ink2);letter-spacing:.4px;text-transform:uppercase}
+  .tab.active{color:var(--accent);border-bottom:2px solid var(--accent);background:var(--panel)}
+  .tabpanel{flex:1;overflow:auto;padding:10px 12px;display:none}
+  .tabpanel.active{display:block}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{padding:5px 6px;text-align:right;border-bottom:1px solid var(--line)}
+  th{color:var(--ink2);font-weight:600;font-size:10px;letter-spacing:.5px;text-transform:uppercase;text-align:right}
+  th:first-child,td:first-child{text-align:left}
+  tbody tr:hover{background:var(--panel2)}
+  .seg-flat{color:var(--green)}.seg-hill{color:var(--red)}.seg-grind{color:var(--blue)}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:var(--ink2);padding:6px 12px;border-top:1px solid var(--line);background:var(--panel2)}
+  .legend .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  .cue{padding:8px 10px;border-left:3px solid var(--accent);background:var(--panel2);border-radius:0 6px 6px 0;margin-bottom:8px}
+  .cue .m{font-weight:700;color:var(--accent);font-size:12px}
+  .cue .t{font-size:12px;margin-top:2px;color:var(--ink)}
+  .phase{margin-bottom:10px;padding:10px;background:var(--panel2);border-radius:8px;border-left:4px solid var(--green)}
+  .phase.hill{border-left-color:var(--red)}
+  .phase.grind{border-left-color:var(--blue)}
+  .phase h4{margin:0 0 4px 0;font-size:13px}
+  .phase p{margin:4px 0 0 0;font-size:12px;color:var(--ink2);line-height:1.45}
+  .fuel-row{display:flex;align-items:center;gap:10px;padding:7px 8px;background:var(--panel2);border-radius:6px;margin-bottom:6px}
+  .fuel-mile{background:var(--accent);color:#1a0f0a;font-weight:700;border-radius:5px;padding:3px 8px;font-size:12px;min-width:48px;text-align:center}
+  .fuel-text{font-size:12px;color:var(--ink);flex:1}
+  .mile-marker{background:#1f2832;color:#fff;border:2px solid var(--accent);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+  .km-marker{background:#1f2832;color:#fff;border:2px solid var(--accent);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700}
+  .aid-marker{background:#1d4e89;color:#fff;border:2px solid #6cb6ff;border-radius:4px;width:14px;height:14px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700}
+  .aid-marker.powerade{background:#7d4dad;border-color:#c8a4ff}
+  .aid-marker.medical{background:#a52828;border-color:#ff8888}
+  .fuel-marker{background:var(--accent);color:#1a0f0a;border:2px solid #ffd1ba;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800}
+  .startfin{background:#1f2832;border:3px solid;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:800}
+  .startfin.start{border-color:var(--green)}
+  .startfin.finish{border-color:var(--red)}
+  .note{font-size:11px;color:var(--ink2);font-style:italic;padding:6px 10px;border-radius:6px;background:var(--panel2);margin-bottom:8px}
+</style>
+</head>
+<body>
+<header>
+  <div class="title">
+    <h1>2026 KDF Marathon - Interactive Race Plan</h1>
+    <div class="sub">Course: <span id="totaldist"></span> (per GPX) - Click a goal to refresh splits - Hover the elevation chart to position the marker on the map</div>
+  </div>
+  <div class="unit-toggle" id="unitToggle">
+    <button data-u="mi">Miles</button>
+    <button data-u="km" class="active">Kilometers</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="left">
+    <div id="map"></div>
+    <div class="elev">
+      <h3 id="elevHeader">Elevation profile (ft) - hover to track on map</h3>
+      <canvas id="elevChart"></canvas>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="goalbar">
+      <div class="label" id="goalLabel">Goal pace - watch predicts 4:03/km, 35K sim @ 4:08/km felt controlled, you're fresher now + race shoes</div>
+      <div class="goals" id="goals"></div>
+    </div>
+
+    <div class="tabs" id="tabs">
+      <div class="tab active" data-tab="splits">Splits</div>
+      <div class="tab" data-tab="phases">Phases</div>
+      <div class="tab" data-tab="fuel">Fuel</div>
+      <div class="tab" data-tab="cues">Cues</div>
+    </div>
+
+    <div class="tabpanel active" data-tab="splits" id="panel-splits">
+      <table>
+        <thead><tr>
+          <th id="hdrUnit">Km</th><th>Pace</th><th>Split</th><th>Cum</th><th>Elev</th>
+        </tr></thead>
+        <tbody id="splitsBody"></tbody>
+      </table>
+    </div>
+
+    <div class="tabpanel" data-tab="phases" id="panel-phases">
+      <div class="phase">
+        <h4 style="color:var(--green)">Phase 1 - Free Miles (<span class="ph1"></span>)</h4>
+        <p>Net mildly downhill, gentle rollers. Run goal pace +3 sec/mi (+2 sec/km) MAX. The crowds, downtown energy and slight downhills will tempt you. Resist. Lock onto a pack moving your pace and hide.</p>
+      </div>
+      <div class="phase hill">
+        <h4 style="color:var(--red)">Phase 2 - Iroquois Park (<span class="ph2"></span>)</h4>
+        <p>The climb = ~30 m / ~94 ft sustained over ~1.5 km / 1 mi. Hold <b>effort</b>, not pace - expect to lose 15-25 sec/km (or 20-30 sec/mi). Punchy rollers inside the park, then ~30 m / 100 ft of free downhill back out. DO NOT hammer descents - quads will write a check at km 37 / mi 23 you can't cash.</p>
+      </div>
+      <div class="phase grind">
+        <h4 style="color:var(--blue)">Phase 3 - The Grind (<span class="ph3"></span>)</h4>
+        <p>Almost dead-flat back via Eastern Pkwy. Out of the park feels weird - give it 1 km / 0.5 mi. Reset rhythm, then with 10K to go (km 32 / mi 20): if HR is sustainable, nudge 1-2 sec/km (2 sec/mi) faster. There's a small free-pace stretch at km 37 / mi 23, then a tiny bump just before the finish.</p>
+      </div>
+    </div>
+
+    <div class="tabpanel" data-tab="fuel" id="panel-fuel">
+      <div class="note">Replicate exactly what you used in the 4/6 race sim (35.22 km @ 4:08/km, 2,380 kcal). 6 gels total at the orange dots on the map.</div>
+      <div id="fuelList"></div>
+      <div class="note">Water at every aid station from km 5 / mile 3 onward (a couple sips). Use Powerade stops (purple on map) post-Iroquois for sodium.</div>
+    </div>
+
+    <div class="tabpanel" data-tab="cues" id="panel-cues">
+      <div id="cuesList"></div>
+    </div>
+
+    <div class="legend">
+      <span><span class="dot" style="background:var(--green)"></span><span class="leg-p1"></span></span>
+      <span><span class="dot" style="background:var(--red)"></span><span class="leg-p2"></span></span>
+      <span><span class="dot" style="background:var(--blue)"></span><span class="leg-p3"></span></span>
+      <span><span class="dot" style="background:#6cb6ff"></span>Water</span>
+      <span><span class="dot" style="background:#c8a4ff"></span>Powerade</span>
+      <span><span class="dot" style="background:#ff8888"></span>Medical</span>
+      <span><span class="dot" style="background:var(--accent)"></span>Fuel</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const DATA = {"totalMi":26.437,"totalKm":42.546,"bbox":[38.153736,-85.79407,38.268391,-85.715598],"start":{"lat":38.255839,"lon":-85.749098},"finish":{"lat":38.257319,"lon":-85.745588},"route":[{"lat":38.255839,"lon":-85.749098,"ele":464.9,"mi":0.0,"km":0.0},{"lat":38.255891,"lon":-85.749854,"ele":463.9,"mi":0.0413,"km":0.0665},{"lat":38.25594,"lon":-85.750687,"ele":465.6,"mi":0.0867,"km":0.1396},{"lat":38.255964,"lon":-85.75131,"ele":465.9,"mi":0.1208,"km":0.1944},{"lat":38.256101,"lon":-85.75214,"ele":467.2,"mi":0.1671,"km":0.2689},{"lat":38.256196,"lon":-85.752958,"ele":466.9,"mi":0.212,"km":0.3411},{"lat":38.25627,"lon":-85.753839,"ele":468.8,"mi":0.26,"km":0.4185},{"lat":38.256388,"lon":-85.754694,"ele":467.2,"mi":0.3082,"km":0.4961},{"lat":38.256466,"lon":-85.75542,"ele":468.8,"mi":0.3487,"km":0.5611},{"lat":38.256537,"lon":-85.756127,"ele":470.8,"mi":0.3883,"km":0.6249},{"lat":38.256654,"lon":-85.757083,"ele":472.1,"mi":0.441,"km":0.7097},{"lat":38.256711,"lon":-85.757736,"ele":472.8,"mi":0.4777,"km":0.7687},{"lat":38.256908,"lon":-85.758481,"ele":470.8,"mi":0.5204,"km":0.8374},{"lat":38.256914,"lon":-85.759202,"ele":469.8,"mi":0.5599,"km":0.9011},{"lat":38.257009,"lon":-85.760164,"ele":466.9,"mi":0.6125,"km":0.9858},{"lat":38.257049,"lon":-85.760829,"ele":467.2,"mi":0.6489,"km":1.0444},{"lat":38.257194,"lon":-85.76183,"ele":467.8,"mi":0.7045,"km":1.1338},{"lat":38.257262,"lon":-85.762534,"ele":468.8,"mi":0.743,"km":1.1957},{"lat":38.25736,"lon":-85.763447,"ele":468.2,"mi":0.7937,"km":1.2773},{"lat":38.257437,"lon":-85.764233,"ele":467.5,"mi":0.8367,"km":1.3465},{"lat":38.257539,"lon":-85.76504,"ele":465.2,"mi":0.8811,"km":1.418},{"lat":38.257619,"lon":-85.765714,"ele":464.2,"mi":0.9181,"km":1.4776},{"lat":38.257715,"lon":-85.766629,"ele":462.9,"mi":0.9683,"km":1.5583},{"lat":38.257779,"lon":-85.767289,"ele":462.3,"mi":1.0043,"km":1.6163},{"lat":38.25786,"lon":-85.768198,"ele":459.6,"mi":1.0541,"km":1.6964},{"lat":38.257947,"lon":-85.769009,"ele":459.0,"mi":1.0985,"km":1.7679},{"lat":38.258055,"lon":-85.769822,"ele":458.0,"mi":1.1433,"km":1.8399},{"lat":38.258157,"lon":-85.770695,"ele":457.7,"mi":1.1912,"km":1.917},{"lat":38.258216,"lon":-85.771432,"ele":458.0,"mi":1.2314,"km":1.9818},{"lat":38.258299,"lon":-85.772219,"ele":456.7,"mi":1.2745,"km":2.0511},{"lat":38.258377,"lon":-85.773088,"ele":455.7,"mi":1.3221,"km":2.1277},{"lat":38.258464,"lon":-85.773756,"ele":457.7,"mi":1.3592,"km":2.1874},{"lat":38.25858,"lon":-85.7747,"ele":459.6,"mi":1.411,"km":2.2708},{"lat":38.258672,"lon":-85.775514,"ele":461.9,"mi":1.4557,"km":2.3427},{"lat":38.258744,"lon":-85.776093,"ele":461.9,"mi":1.4875,"km":2.3939},{"lat":38.258852,"lon":-85.777128,"ele":460.6,"mi":1.5443,"km":2.4852},{"lat":38.258942,"lon":-85.777808,"ele":459.6,"mi":1.5817,"km":2.5455},{"lat":38.259008,"lon":-85.778714,"ele":458.7,"mi":1.6311,"km":2.625},{"lat":38.2591,"lon":-85.779509,"ele":458.7,"mi":1.6747,"km":2.6952},{"lat":38.258619,"lon":-85.779789,"ele":455.4,"mi":1.7186,"km":2.7658},{"lat":38.25801,"lon":-85.779875,"ele":455.1,"mi":1.761,"km":2.834},{"lat":38.257726,"lon":-85.779245,"ele":455.7,"mi":1.8061,"km":2.9066},{"lat":38.257677,"lon":-85.77856,"ele":456.4,"mi":1.8434,"km":2.9667},{"lat":38.257582,"lon":-85.77768,"ele":457.3,"mi":1.8917,"km":3.0443},{"lat":38.257456,"lon":-85.77681,"ele":458.3,"mi":1.9397,"km":3.1216},{"lat":38.257429,"lon":-85.776129,"ele":458.7,"mi":1.9767,"km":3.1811},{"lat":38.257292,"lon":-85.775253,"ele":459.6,"mi":2.0251,"km":3.2592},{"lat":38.257199,"lon":-85.774389,"ele":459.3,"mi":2.0725,"km":3.3354},{"lat":38.257112,"lon":-85.773645,"ele":457.7,"mi":2.1133,"km":3.4011},{"lat":38.256999,"lon":-85.772888,"ele":457.0,"mi":2.1553,"km":3.4687},{"lat":38.256912,"lon":-85.77207,"ele":458.3,"mi":2.2002,"km":3.5408},{"lat":38.256402,"lon":-85.77177,"ele":460.6,"mi":2.2471,"km":3.6164},{"lat":38.255738,"lon":-85.77189,"ele":461.6,"mi":2.2935,"km":3.6911},{"lat":38.255224,"lon":-85.771988,"ele":461.0,"mi":2.3295,"km":3.7489},{"lat":38.254492,"lon":-85.772126,"ele":460.0,"mi":2.3806,"km":3.8312},{"lat":38.253851,"lon":-85.772238,"ele":459.0,"mi":2.4253,"km":3.9032},{"lat":38.253321,"lon":-85.772329,"ele":458.0,"mi":2.4623,"km":3.9627},{"lat":38.252764,"lon":-85.772749,"ele":458.0,"mi":2.5146,"km":4.0468},{"lat":38.252845,"lon":-85.773447,"ele":460.3,"mi":2.5529,"km":4.1084},{"lat":38.252921,"lon":-85.774229,"ele":461.9,"mi":2.5957,"km":4.1774},{"lat":38.253039,"lon":-85.775162,"ele":459.3,"mi":2.647,"km":4.26},{"lat":38.253107,"lon":-85.775784,"ele":458.3,"mi":2.6811,"km":4.3148},{"lat":38.253211,"lon":-85.776589,"ele":460.0,"mi":2.7254,"km":4.3861},{"lat":38.253269,"lon":-85.777506,"ele":460.0,"mi":2.7753,"km":4.4664},{"lat":38.253381,"lon":-85.778352,"ele":460.0,"mi":2.8219,"km":4.5414},{"lat":38.253456,"lon":-85.779073,"ele":457.7,"mi":2.8614,"km":4.6049},{"lat":38.253557,"lon":-85.779865,"ele":455.7,"mi":2.9049,"km":4.675},{"lat":38.253543,"lon":-85.7807,"ele":453.7,"mi":2.953,"km":4.7525},{"lat":38.252849,"lon":-85.780772,"ele":455.4,"mi":3.0012,"km":4.8299},{"lat":38.252362,"lon":-85.78087,"ele":455.7,"mi":3.0353,"km":4.8848},{"lat":38.251727,"lon":-85.780951,"ele":456.4,"mi":3.0794,"km":4.9558},{"lat":38.251399,"lon":-85.780291,"ele":457.3,"mi":3.1306,"km":5.0382},{"lat":38.251346,"lon":-85.779626,"ele":458.0,"mi":3.1669,"km":5.0966},{"lat":38.251222,"lon":-85.778723,"ele":459.6,"mi":3.2167,"km":5.1767},{"lat":38.251145,"lon":-85.777999,"ele":459.0,"mi":3.2564,"km":5.2406},{"lat":38.251066,"lon":-85.7772,"ele":457.7,"mi":3.3001,"km":5.311},{"lat":38.250998,"lon":-85.77645,"ele":456.7,"mi":3.3411,"km":5.377},{"lat":38.250883,"lon":-85.775497,"ele":456.7,"mi":3.3936,"km":5.4614},{"lat":38.250796,"lon":-85.774667,"ele":456.7,"mi":3.439,"km":5.5346},{"lat":38.250702,"lon":-85.773947,"ele":456.7,"mi":3.4788,"km":5.5986},{"lat":38.250598,"lon":-85.773217,"ele":456.4,"mi":3.5191,"km":5.6635},{"lat":38.250078,"lon":-85.77283,"ele":453.4,"mi":3.5686,"km":5.743},{"lat":38.249477,"lon":-85.772481,"ele":453.4,"mi":3.6145,"km":5.8169},{"lat":38.249027,"lon":-85.772162,"ele":453.7,"mi":3.6501,"km":5.8742},{"lat":38.248454,"lon":-85.771745,"ele":454.4,"mi":3.6957,"km":5.9476},{"lat":38.247768,"lon":-85.771568,"ele":455.7,"mi":3.7444,"km":6.026},{"lat":38.247458,"lon":-85.770815,"ele":455.4,"mi":3.7951,"km":6.1077},{"lat":38.24741,"lon":-85.77023,"ele":455.4,"mi":3.8271,"km":6.159},{"lat":38.247288,"lon":-85.769264,"ele":454.4,"mi":3.8802,"km":6.2445},{"lat":38.247159,"lon":-85.768401,"ele":454.1,"mi":3.9279,"km":6.3213},{"lat":38.247064,"lon":-85.767789,"ele":452.8,"mi":3.9618,"km":6.3758},{"lat":38.246958,"lon":-85.766856,"ele":450.8,"mi":4.0132,"km":6.4587},{"lat":38.246773,"lon":-85.766067,"ele":451.1,"mi":4.0584,"km":6.5313},{"lat":38.246654,"lon":-85.765272,"ele":452.1,"mi":4.1024,"km":6.6021},{"lat":38.246566,"lon":-85.764461,"ele":452.4,"mi":4.1468,"km":6.6737},{"lat":38.246466,"lon":-85.763667,"ele":452.4,"mi":4.1905,"km":6.744},{"lat":38.246404,"lon":-85.762965,"ele":452.1,"mi":4.2288,"km":6.8057},{"lat":38.246375,"lon":-85.762139,"ele":452.4,"mi":4.2738,"km":6.878},{"lat":38.246324,"lon":-85.761365,"ele":452.8,"mi":4.316,"km":6.9459},{"lat":38.246246,"lon":-85.760421,"ele":454.1,"mi":4.3676,"km":7.029},{"lat":38.246167,"lon":-85.759673,"ele":453.4,"mi":4.4087,"km":7.095},{"lat":38.246083,"lon":-85.758793,"ele":453.1,"mi":4.4568,"km":7.1725},{"lat":38.245602,"lon":-85.758539,"ele":453.1,"mi":4.5007,"km":7.2432},{"lat":38.24509,"lon":-85.758562,"ele":452.1,"mi":4.5363,"km":7.3004},{"lat":38.244354,"lon":-85.758594,"ele":450.5,"mi":4.5873,"km":7.3826},{"lat":38.243881,"lon":-85.758749,"ele":450.5,"mi":4.6213,"km":7.4372},{"lat":38.243147,"lon":-85.758859,"ele":451.4,"mi":4.6727,"km":7.5199},{"lat":38.242449,"lon":-85.759025,"ele":452.4,"mi":4.7219,"km":7.5992},{"lat":38.241824,"lon":-85.759093,"ele":453.1,"mi":4.7653,"km":7.6691},{"lat":38.24119,"lon":-85.759191,"ele":453.4,"mi":4.8096,"km":7.7402},{"lat":38.240615,"lon":-85.759292,"ele":454.1,"mi":4.8497,"km":7.8048},{"lat":38.240076,"lon":-85.759372,"ele":454.7,"mi":4.8872,"km":7.8652},{"lat":38.2394,"lon":-85.75949,"ele":455.7,"mi":4.9344,"km":7.9411},{"lat":38.238773,"lon":-85.759598,"ele":457.0,"mi":4.9782,"km":8.0116},{"lat":38.23809,"lon":-85.759736,"ele":457.0,"mi":5.026,"km":8.0886},{"lat":38.237503,"lon":-85.75985,"ele":456.7,"mi":5.0671,"km":8.1548},{"lat":38.236884,"lon":-85.759974,"ele":456.0,"mi":5.1106,"km":8.2247},{"lat":38.236194,"lon":-85.76007,"ele":456.4,"mi":5.1586,"km":8.302},{"lat":38.235674,"lon":-85.760167,"ele":457.0,"mi":5.195,"km":8.3605},{"lat":38.234916,"lon":-85.76031,"ele":457.3,"mi":5.2479,"km":8.4458},{"lat":38.234383,"lon":-85.760407,"ele":457.0,"mi":5.2852,"km":8.5057},{"lat":38.233605,"lon":-85.760552,"ele":456.4,"mi":5.3396,"km":8.5932},{"lat":38.233105,"lon":-85.760681,"ele":457.0,"mi":5.3748,"km":8.6499},{"lat":38.232347,"lon":-85.760749,"ele":458.3,"mi":5.4274,"km":8.7346},{"lat":38.231723,"lon":-85.760877,"ele":459.0,"mi":5.4714,"km":8.8053},{"lat":38.23136,"lon":-85.761092,"ele":459.0,"mi":5.5043,"km":8.8583},{"lat":38.231518,"lon":-85.762073,"ele":459.3,"mi":5.5591,"km":8.9465},{"lat":38.231587,"lon":-85.762711,"ele":460.3,"mi":5.5941,"km":9.0029},{"lat":38.231684,"lon":-85.763521,"ele":458.7,"mi":5.6386,"km":9.0745},{"lat":38.231617,"lon":-85.764311,"ele":457.7,"mi":5.6855,"km":9.1499},{"lat":38.231006,"lon":-85.764382,"ele":458.0,"mi":5.7279,"km":9.2182},{"lat":38.230331,"lon":-85.764449,"ele":458.3,"mi":5.7748,"km":9.2936},{"lat":38.229621,"lon":-85.764546,"ele":459.0,"mi":5.8242,"km":9.3731},{"lat":38.22943,"lon":-85.763966,"ele":460.0,"mi":5.8636,"km":9.4366},{"lat":38.229358,"lon":-85.763182,"ele":461.3,"mi":5.9066,"km":9.5057},{"lat":38.229252,"lon":-85.762253,"ele":459.3,"mi":5.9575,"km":9.5877},{"lat":38.229119,"lon":-85.761481,"ele":458.7,"mi":6.0005,"km":9.6569},{"lat":38.22859,"lon":-85.761417,"ele":457.7,"mi":6.0396,"km":9.7199},{"lat":38.227926,"lon":-85.761535,"ele":457.3,"mi":6.0861,"km":9.7946},{"lat":38.227294,"lon":-85.761657,"ele":457.0,"mi":6.1303,"km":9.8658},{"lat":38.226659,"lon":-85.76175,"ele":456.7,"mi":6.1745,"km":9.937},{"lat":38.226106,"lon":-85.761859,"ele":456.4,"mi":6.2132,"km":9.9993},{"lat":38.225414,"lon":-85.761965,"ele":456.4,"mi":6.2614,"km":10.0768},{"lat":38.224738,"lon":-85.762077,"ele":456.7,"mi":6.3085,"km":10.1526},{"lat":38.224235,"lon":-85.762179,"ele":457.3,"mi":6.3438,"km":10.2093},{"lat":38.223501,"lon":-85.762283,"ele":458.7,"mi":6.3948,"km":10.2915},{"lat":38.222848,"lon":-85.762399,"ele":458.3,"mi":6.4404,"km":10.3648},{"lat":38.222278,"lon":-85.762517,"ele":457.3,"mi":6.4803,"km":10.4291},{"lat":38.221692,"lon":-85.762666,"ele":457.7,"mi":6.5217,"km":10.4957},{"lat":38.220974,"lon":-85.762734,"ele":458.7,"mi":6.5719,"km":10.5765},{"lat":38.220313,"lon":-85.762849,"ele":459.0,"mi":6.6181,"km":10.6507},{"lat":38.21975,"lon":-85.762942,"ele":459.6,"mi":6.6573,"km":10.7139},{"lat":38.219172,"lon":-85.763006,"ele":460.0,"mi":6.6975,"km":10.7786},{"lat":38.218581,"lon":-85.763146,"ele":459.0,"mi":6.7391,"km":10.8455},{"lat":38.21789,"lon":-85.763229,"ele":458.7,"mi":6.7871,"km":10.9228},{"lat":38.217242,"lon":-85.763394,"ele":459.0,"mi":6.8328,"km":10.9963},{"lat":38.216549,"lon":-85.763544,"ele":458.0,"mi":6.8815,"km":11.0747},{"lat":38.215941,"lon":-85.763687,"ele":454.4,"mi":6.9242,"km":11.1435},{"lat":38.215346,"lon":-85.763803,"ele":447.2,"mi":6.9663,"km":11.2112},{"lat":38.215346,"lon":-85.763803,"ele":447.2,"mi":6.9663,"km":11.2112},{"lat":38.214062,"lon":-85.764049,"ele":454.7,"mi":7.0563,"km":11.3559},{"lat":38.213357,"lon":-85.764166,"ele":458.0,"mi":7.1056,"km":11.4354},{"lat":38.21273,"lon":-85.764254,"ele":458.7,"mi":7.1492,"km":11.5056},{"lat":38.212234,"lon":-85.76432,"ele":459.3,"mi":7.1837,"km":11.5611},{"lat":38.211525,"lon":-85.764433,"ele":459.6,"mi":7.2331,"km":11.6406},{"lat":38.210925,"lon":-85.76455,"ele":459.6,"mi":7.2752,"km":11.7082},{"lat":38.210293,"lon":-85.764668,"ele":459.3,"mi":7.3193,"km":11.7793},{"lat":38.209559,"lon":-85.764796,"ele":459.3,"mi":7.3705,"km":11.8617},{"lat":38.209081,"lon":-85.764891,"ele":459.0,"mi":7.404,"km":11.9155},{"lat":38.208377,"lon":-85.765006,"ele":459.3,"mi":7.453,"km":11.9944},{"lat":38.207699,"lon":-85.765115,"ele":459.3,"mi":7.5003,"km":12.0705},{"lat":38.207112,"lon":-85.76523,"ele":459.3,"mi":7.5413,"km":12.1366},{"lat":38.206447,"lon":-85.765372,"ele":459.0,"mi":7.5879,"km":12.2116},{"lat":38.20594,"lon":-85.765465,"ele":458.7,"mi":7.6233,"km":12.2686},{"lat":38.205247,"lon":-85.765786,"ele":457.3,"mi":7.6776,"km":12.3559},{"lat":38.205318,"lon":-85.766557,"ele":457.0,"mi":7.7198,"km":12.4238},{"lat":38.205398,"lon":-85.767242,"ele":456.0,"mi":7.7574,"km":12.4843},{"lat":38.205475,"lon":-85.768028,"ele":455.4,"mi":7.8004,"km":12.5535},{"lat":38.205557,"lon":-85.76886,"ele":454.4,"mi":7.8459,"km":12.6268},{"lat":38.205633,"lon":-85.769617,"ele":453.7,"mi":7.8874,"km":12.6935},{"lat":38.205714,"lon":-85.770461,"ele":452.4,"mi":7.9336,"km":12.7678},{"lat":38.20573,"lon":-85.771392,"ele":451.1,"mi":7.9841,"km":12.8492},{"lat":38.205597,"lon":-85.772048,"ele":451.4,"mi":8.0299,"km":12.9229},{"lat":38.205239,"lon":-85.771331,"ele":452.8,"mi":8.0761,"km":12.9973},{"lat":38.204968,"lon":-85.770858,"ele":453.4,"mi":8.1084,"km":13.0492},{"lat":38.204968,"lon":-85.770858,"ele":453.4,"mi":8.1084,"km":13.0492},{"lat":38.204968,"lon":-85.770858,"ele":453.4,"mi":8.1084,"km":13.0492},{"lat":38.203343,"lon":-85.77008,"ele":454.1,"mi":8.2529,"km":13.2818},{"lat":38.203056,"lon":-85.770743,"ele":453.7,"mi":8.294,"km":13.348},{"lat":38.202701,"lon":-85.771397,"ele":454.1,"mi":8.3372,"km":13.4175},{"lat":38.202263,"lon":-85.77147,"ele":453.7,"mi":8.3775,"km":13.4823},{"lat":38.201886,"lon":-85.770789,"ele":455.7,"mi":8.4294,"km":13.5658},{"lat":38.20227,"lon":-85.770356,"ele":454.7,"mi":8.4654,"km":13.6237},{"lat":38.202712,"lon":-85.769621,"ele":454.1,"mi":8.5158,"km":13.7048},{"lat":38.203043,"lon":-85.768959,"ele":453.4,"mi":8.5584,"km":13.7734},{"lat":38.203323,"lon":-85.768382,"ele":453.7,"mi":8.5953,"km":13.8327},{"lat":38.204014,"lon":-85.76851,"ele":453.7,"mi":8.6488,"km":13.9189},{"lat":38.204456,"lon":-85.768126,"ele":451.8,"mi":8.6886,"km":13.983},{"lat":38.204669,"lon":-85.767684,"ele":445.9,"mi":8.7168,"km":14.0284},{"lat":38.204669,"lon":-85.767684,"ele":445.9,"mi":8.7168,"km":14.0284},{"lat":38.204618,"lon":-85.765875,"ele":457.0,"mi":8.8165,"km":14.1888},{"lat":38.205101,"lon":-85.765371,"ele":457.0,"mi":8.8642,"km":14.2655},{"lat":38.20488,"lon":-85.764513,"ele":456.7,"mi":8.9132,"km":14.3445},{"lat":38.20459,"lon":-85.764016,"ele":457.3,"mi":8.949,"km":14.4021},{"lat":38.203932,"lon":-85.764152,"ele":457.0,"mi":8.9951,"km":14.4762},{"lat":38.203216,"lon":-85.764253,"ele":456.7,"mi":9.0449,"km":14.5564},{"lat":38.202635,"lon":-85.764343,"ele":457.7,"mi":9.0854,"km":14.6215},{"lat":38.202093,"lon":-85.764417,"ele":457.7,"mi":9.1231,"km":14.6822},{"lat":38.2013,"lon":-85.764656,"ele":456.7,"mi":9.1796,"km":14.7732},{"lat":38.20075,"lon":-85.765023,"ele":456.0,"mi":9.2227,"km":14.8425},{"lat":38.200306,"lon":-85.765469,"ele":456.0,"mi":9.2618,"km":14.9055},{"lat":38.199823,"lon":-85.765988,"ele":456.4,"mi":9.3055,"km":14.9758},{"lat":38.199325,"lon":-85.766533,"ele":456.0,"mi":9.3509,"km":15.0488},{"lat":38.198663,"lon":-85.766867,"ele":456.0,"mi":9.4007,"km":15.1289},{"lat":38.198095,"lon":-85.766919,"ele":456.0,"mi":9.4401,"km":15.1923},{"lat":38.197534,"lon":-85.766914,"ele":455.7,"mi":9.4788,"km":15.2547},{"lat":38.196907,"lon":-85.766891,"ele":456.7,"mi":9.5222,"km":15.3245},{"lat":38.196209,"lon":-85.766866,"ele":458.3,"mi":9.5705,"km":15.4022},{"lat":38.195552,"lon":-85.766856,"ele":459.6,"mi":9.6159,"km":15.4754},{"lat":38.19494,"lon":-85.766843,"ele":459.0,"mi":9.6582,"km":15.5434},{"lat":38.194256,"lon":-85.766845,"ele":458.7,"mi":9.7056,"km":15.6196},{"lat":38.193588,"lon":-85.766811,"ele":458.0,"mi":9.7519,"km":15.6941},{"lat":38.193031,"lon":-85.766799,"ele":457.3,"mi":9.7904,"km":15.7561},{"lat":38.192345,"lon":-85.766778,"ele":458.7,"mi":9.8379,"km":15.8325},{"lat":38.191765,"lon":-85.766773,"ele":462.3,"mi":9.878,"km":15.8971},{"lat":38.191139,"lon":-85.766774,"ele":469.2,"mi":9.9212,"km":15.9667},{"lat":38.190505,"lon":-85.766756,"ele":473.4,"mi":9.9651,"km":16.0372},{"lat":38.189768,"lon":-85.766735,"ele":477.4,"mi":10.0161,"km":16.1194},{"lat":38.189198,"lon":-85.76678,"ele":479.3,"mi":10.0557,"km":16.183},{"lat":38.188582,"lon":-85.766851,"ele":479.0,"mi":10.0984,"km":16.2518},{"lat":38.187943,"lon":-85.766958,"ele":478.0,"mi":10.1429,"km":16.3235},{"lat":38.187271,"lon":-85.767112,"ele":477.0,"mi":10.1902,"km":16.3995},{"lat":38.186671,"lon":-85.767223,"ele":476.4,"mi":10.2321,"km":16.467},{"lat":38.186071,"lon":-85.767318,"ele":475.4,"mi":10.2739,"km":16.5342},{"lat":38.185364,"lon":-85.767413,"ele":473.8,"mi":10.3232,"km":16.6135},{"lat":38.184703,"lon":-85.767551,"ele":472.1,"mi":10.3695,"km":16.6881},{"lat":38.184171,"lon":-85.767659,"ele":470.8,"mi":10.4067,"km":16.748},{"lat":38.183537,"lon":-85.767769,"ele":470.1,"mi":10.451,"km":16.8192},{"lat":38.182798,"lon":-85.767918,"ele":469.5,"mi":10.5027,"km":16.9025},{"lat":38.182263,"lon":-85.768149,"ele":469.2,"mi":10.542,"km":16.9656},{"lat":38.181788,"lon":-85.768579,"ele":468.5,"mi":10.5824,"km":17.0307},{"lat":38.181332,"lon":-85.769187,"ele":466.9,"mi":10.628,"km":17.1042},{"lat":38.180931,"lon":-85.769802,"ele":465.2,"mi":10.6714,"km":17.174},{"lat":38.180395,"lon":-85.770451,"ele":463.9,"mi":10.7227,"km":17.2565},{"lat":38.179996,"lon":-85.770899,"ele":463.9,"mi":10.7595,"km":17.3158},{"lat":38.179299,"lon":-85.77122,"ele":464.6,"mi":10.811,"km":17.3985},{"lat":38.178741,"lon":-85.771336,"ele":465.9,"mi":10.85,"km":17.4614},{"lat":38.178173,"lon":-85.771537,"ele":467.2,"mi":10.8908,"km":17.527},{"lat":38.177537,"lon":-85.77185,"ele":468.5,"mi":10.9379,"km":17.6029},{"lat":38.176864,"lon":-85.772253,"ele":469.8,"mi":10.9895,"km":17.686},{"lat":38.176337,"lon":-85.772695,"ele":470.1,"mi":11.0332,"km":17.7562},{"lat":38.175847,"lon":-85.773194,"ele":470.8,"mi":11.0766,"km":17.8261},{"lat":38.175382,"lon":-85.773752,"ele":471.1,"mi":11.1208,"km":17.8971},{"lat":38.174945,"lon":-85.774321,"ele":471.1,"mi":11.164,"km":17.9667},{"lat":38.174535,"lon":-85.774908,"ele":471.1,"mi":11.2067,"km":18.0354},{"lat":38.174173,"lon":-85.77542,"ele":470.8,"mi":11.2441,"km":18.0956},{"lat":38.173628,"lon":-85.776139,"ele":470.5,"mi":11.2984,"km":18.183},{"lat":38.173213,"lon":-85.776687,"ele":470.5,"mi":11.3398,"km":18.2496},{"lat":38.172758,"lon":-85.7773,"ele":470.5,"mi":11.3856,"km":18.3234},{"lat":38.172333,"lon":-85.777865,"ele":471.1,"mi":11.4281,"km":18.3918},{"lat":38.171938,"lon":-85.778397,"ele":472.1,"mi":11.4679,"km":18.4558},{"lat":38.171528,"lon":-85.778934,"ele":473.1,"mi":11.5086,"km":18.5212},{"lat":38.171054,"lon":-85.779561,"ele":476.7,"mi":11.5558,"km":18.5973},{"lat":38.170562,"lon":-85.780271,"ele":482.0,"mi":11.6074,"km":18.6804},{"lat":38.170204,"lon":-85.78075,"ele":487.2,"mi":11.6434,"km":18.7383},{"lat":38.169786,"lon":-85.781281,"ele":492.5,"mi":11.6843,"km":18.804},{"lat":38.169185,"lon":-85.78188,"ele":503.0,"mi":11.7381,"km":18.8906},{"lat":38.168619,"lon":-85.781797,"ele":512.5,"mi":11.7781,"km":18.955},{"lat":38.167982,"lon":-85.781555,"ele":522.3,"mi":11.8241,"km":19.029},{"lat":38.167317,"lon":-85.781373,"ele":530.8,"mi":11.8711,"km":19.1047},{"lat":38.167227,"lon":-85.781884,"ele":540.0,"mi":11.9084,"km":19.1647},{"lat":38.167751,"lon":-85.782464,"ele":550.9,"mi":11.9569,"km":19.2428},{"lat":38.168051,"lon":-85.78313,"ele":561.0,"mi":11.9986,"km":19.31},{"lat":38.168117,"lon":-85.783888,"ele":568.9,"mi":12.0423,"km":19.3801},{"lat":38.16848,"lon":-85.784497,"ele":574.8,"mi":12.085,"km":19.4489},{"lat":38.168599,"lon":-85.785337,"ele":579.7,"mi":12.1317,"km":19.5241},{"lat":38.168664,"lon":-85.786238,"ele":581.7,"mi":12.1809,"km":19.6033},{"lat":38.168638,"lon":-85.786997,"ele":572.8,"mi":12.2229,"km":19.6708},{"lat":38.168406,"lon":-85.787592,"ele":565.0,"mi":12.2593,"km":19.7294},{"lat":38.167846,"lon":-85.788266,"ele":554.5,"mi":12.3128,"km":19.8155},{"lat":38.167599,"lon":-85.78889,"ele":546.3,"mi":12.3516,"km":19.878},{"lat":38.167167,"lon":-85.789544,"ele":534.8,"mi":12.4005,"km":19.9567},{"lat":38.167336,"lon":-85.790166,"ele":526.9,"mi":12.4372,"km":20.0158},{"lat":38.167719,"lon":-85.790932,"ele":518.0,"mi":12.487,"km":20.0959},{"lat":38.167862,"lon":-85.791599,"ele":512.8,"mi":12.5246,"km":20.1564},{"lat":38.16789,"lon":-85.792374,"ele":514.4,"mi":12.567,"km":20.2246},{"lat":38.167186,"lon":-85.792604,"ele":527.6,"mi":12.6208,"km":20.3112},{"lat":38.166731,"lon":-85.792869,"ele":528.9,"mi":12.6579,"km":20.3709},{"lat":38.166469,"lon":-85.793607,"ele":521.3,"mi":12.702,"km":20.442},{"lat":38.165924,"lon":-85.79407,"ele":515.4,"mi":12.7485,"km":20.5167},{"lat":38.165321,"lon":-85.793778,"ele":520.0,"mi":12.7936,"km":20.5893},{"lat":38.164756,"lon":-85.793489,"ele":530.2,"mi":12.836,"km":20.6576},{"lat":38.164086,"lon":-85.793552,"ele":539.4,"mi":12.8828,"km":20.7328},{"lat":38.163549,"lon":-85.793833,"ele":543.0,"mi":12.923,"km":20.7976},{"lat":38.162985,"lon":-85.793761,"ele":547.9,"mi":12.9635,"km":20.8627},{"lat":38.162343,"lon":-85.793338,"ele":562.3,"mi":13.0139,"km":20.9438},{"lat":38.161818,"lon":-85.793529,"ele":572.5,"mi":13.0522,"km":21.0055},{"lat":38.161254,"lon":-85.79331,"ele":573.5,"mi":13.0987,"km":21.0803},{"lat":38.160656,"lon":-85.792912,"ele":560.7,"mi":13.1516,"km":21.1655},{"lat":38.16009,"lon":-85.793284,"ele":553.8,"mi":13.1958,"km":21.2366},{"lat":38.15962,"lon":-85.793,"ele":561.7,"mi":13.2354,"km":21.3003},{"lat":38.158987,"lon":-85.792799,"ele":570.9,"mi":13.2822,"km":21.3757},{"lat":38.158592,"lon":-85.7924,"ele":573.5,"mi":13.3228,"km":21.441},{"lat":38.158452,"lon":-85.791611,"ele":564.3,"mi":13.37,"km":21.517},{"lat":38.158094,"lon":-85.791033,"ele":554.8,"mi":13.4101,"km":21.5815},{"lat":38.157607,"lon":-85.790545,"ele":545.9,"mi":13.4533,"km":21.651},{"lat":38.157025,"lon":-85.789979,"ele":541.3,"mi":13.504,"km":21.7326},{"lat":38.156479,"lon":-85.789577,"ele":539.4,"mi":13.5477,"km":21.8029},{"lat":38.155998,"lon":-85.78935,"ele":540.0,"mi":13.5832,"km":21.8601},{"lat":38.155546,"lon":-85.788743,"ele":539.0,"mi":13.6289,"km":21.9336},{"lat":38.154848,"lon":-85.788436,"ele":538.7,"mi":13.6811,"km":22.0176},{"lat":38.154281,"lon":-85.788211,"ele":528.9,"mi":13.7247,"km":22.0877},{"lat":38.154041,"lon":-85.787565,"ele":519.7,"mi":13.7651,"km":22.1527},{"lat":38.153896,"lon":-85.786924,"ele":520.0,"mi":13.8024,"km":22.2128},{"lat":38.15445,"lon":-85.786294,"ele":535.4,"mi":13.8551,"km":22.2977},{"lat":38.154429,"lon":-85.785583,"ele":548.2,"mi":13.894,"km":22.3603},{"lat":38.154488,"lon":-85.784889,"ele":561.0,"mi":13.9353,"km":22.4267},{"lat":38.153788,"lon":-85.784811,"ele":571.5,"mi":13.9883,"km":22.5119},{"lat":38.153923,"lon":-85.784142,"ele":562.7,"mi":14.0284,"km":22.5765},{"lat":38.154367,"lon":-85.783631,"ele":557.4,"mi":14.0703,"km":22.644},{"lat":38.154891,"lon":-85.783011,"ele":545.3,"mi":14.1213,"km":22.726},{"lat":38.155104,"lon":-85.782221,"ele":530.8,"mi":14.1668,"km":22.7993},{"lat":38.155331,"lon":-85.781517,"ele":520.7,"mi":14.2082,"km":22.8659},{"lat":38.155663,"lon":-85.780955,"ele":512.5,"mi":14.2466,"km":22.9277},{"lat":38.15629,"lon":-85.780497,"ele":509.2,"mi":14.2969,"km":23.0087},{"lat":38.156816,"lon":-85.780189,"ele":508.5,"mi":14.337,"km":23.0731},{"lat":38.157338,"lon":-85.780016,"ele":508.2,"mi":14.3743,"km":23.1332},{"lat":38.158024,"lon":-85.779923,"ele":510.8,"mi":14.4223,"km":23.2104},{"lat":38.158801,"lon":-85.780018,"ele":516.1,"mi":14.4763,"km":23.2974},{"lat":38.159196,"lon":-85.780299,"ele":518.0,"mi":14.5078,"km":23.348},{"lat":38.159787,"lon":-85.780865,"ele":517.7,"mi":14.5596,"km":23.4314},{"lat":38.160273,"lon":-85.781404,"ele":522.0,"mi":14.6042,"km":23.5032},{"lat":38.160779,"lon":-85.781392,"ele":526.9,"mi":14.6401,"km":23.561},{"lat":38.161397,"lon":-85.781193,"ele":525.6,"mi":14.6844,"km":23.6322},{"lat":38.16212,"lon":-85.781005,"ele":521.3,"mi":14.7354,"km":23.7144},{"lat":38.162766,"lon":-85.7809,"ele":522.3,"mi":14.7805,"km":23.7868},{"lat":38.163404,"lon":-85.780809,"ele":524.6,"mi":14.8249,"km":23.8583},{"lat":38.163993,"lon":-85.780824,"ele":526.6,"mi":14.8656,"km":23.9239},{"lat":38.16473,"lon":-85.780852,"ele":529.9,"mi":14.917,"km":24.0066},{"lat":38.16531,"lon":-85.780851,"ele":531.5,"mi":14.9572,"km":24.0713},{"lat":38.165896,"lon":-85.780868,"ele":533.5,"mi":14.9983,"km":24.1373},{"lat":38.166409,"lon":-85.781194,"ele":534.4,"mi":15.0384,"km":24.2019},{"lat":38.167092,"lon":-85.78147,"ele":533.8,"mi":15.0891,"km":24.2835},{"lat":38.167763,"lon":-85.781611,"ele":525.3,"mi":15.1368,"km":24.3603},{"lat":38.168361,"lon":-85.781847,"ele":516.7,"mi":15.1802,"km":24.4301},{"lat":38.168859,"lon":-85.782004,"ele":508.9,"mi":15.2158,"km":24.4875},{"lat":38.169529,"lon":-85.781727,"ele":497.4,"mi":15.267,"km":24.5699},{"lat":38.169901,"lon":-85.781253,"ele":491.8,"mi":15.3034,"km":24.6284},{"lat":38.170406,"lon":-85.780604,"ele":484.9,"mi":15.353,"km":24.7083},{"lat":38.170861,"lon":-85.77995,"ele":479.0,"mi":15.4005,"km":24.7848},{"lat":38.171326,"lon":-85.779331,"ele":474.7,"mi":15.4471,"km":24.8598},{"lat":38.171713,"lon":-85.77882,"ele":472.8,"mi":15.4857,"km":24.9218},{"lat":38.172188,"lon":-85.778155,"ele":471.5,"mi":15.5345,"km":25.0004},{"lat":38.172488,"lon":-85.777698,"ele":470.8,"mi":15.5669,"km":25.0525},{"lat":38.173029,"lon":-85.776994,"ele":470.5,"mi":15.6204,"km":25.1386},{"lat":38.173474,"lon":-85.776409,"ele":470.5,"mi":15.6646,"km":25.2098},{"lat":38.173937,"lon":-85.775797,"ele":470.8,"mi":15.7108,"km":25.2841},{"lat":38.174328,"lon":-85.775252,"ele":471.1,"mi":15.7509,"km":25.3486},{"lat":38.174836,"lon":-85.774609,"ele":471.1,"mi":15.8004,"km":25.4283},{"lat":38.17521,"lon":-85.7741,"ele":471.1,"mi":15.8383,"km":25.4892},{"lat":38.175693,"lon":-85.773431,"ele":471.1,"mi":15.8876,"km":25.5686},{"lat":38.176187,"lon":-85.77289,"ele":470.5,"mi":15.9328,"km":25.6413},{"lat":38.176588,"lon":-85.772491,"ele":470.1,"mi":15.968,"km":25.698},{"lat":38.177241,"lon":-85.772015,"ele":469.2,"mi":16.0201,"km":25.7818},{"lat":38.177717,"lon":-85.771767,"ele":468.2,"mi":16.0556,"km":25.8391},{"lat":38.178373,"lon":-85.771539,"ele":466.9,"mi":16.1028,"km":25.9149},{"lat":38.178955,"lon":-85.771374,"ele":465.6,"mi":16.144,"km":25.9813},{"lat":38.179654,"lon":-85.771212,"ele":463.9,"mi":16.1931,"km":26.0603},{"lat":38.180267,"lon":-85.770803,"ele":463.9,"mi":16.2413,"km":26.1378},{"lat":38.180666,"lon":-85.770169,"ele":464.2,"mi":16.2854,"km":26.2088},{"lat":38.181074,"lon":-85.76954,"ele":465.9,"mi":16.3298,"km":26.2802},{"lat":38.181434,"lon":-85.769015,"ele":467.2,"mi":16.3677,"km":26.3412},{"lat":38.181926,"lon":-85.768404,"ele":468.8,"mi":16.4153,"km":26.4178},{"lat":38.182487,"lon":-85.768022,"ele":469.5,"mi":16.4595,"km":26.489},{"lat":38.183114,"lon":-85.767857,"ele":469.8,"mi":16.5039,"km":26.5604},{"lat":38.183757,"lon":-85.76776,"ele":470.5,"mi":16.5487,"km":26.6325},{"lat":38.184325,"lon":-85.767641,"ele":471.1,"mi":16.5885,"km":26.6966},{"lat":38.184938,"lon":-85.767545,"ele":472.8,"mi":16.6312,"km":26.7653},{"lat":38.18566,"lon":-85.767407,"ele":474.4,"mi":16.6816,"km":26.8465},{"lat":38.186294,"lon":-85.767309,"ele":475.7,"mi":16.7258,"km":26.9176},{"lat":38.18687,"lon":-85.767206,"ele":476.4,"mi":16.766,"km":26.9823},{"lat":38.18748,"lon":-85.767109,"ele":477.4,"mi":16.8085,"km":27.0507},{"lat":38.18809,"lon":-85.767015,"ele":478.0,"mi":16.851,"km":27.119},{"lat":38.188814,"lon":-85.766884,"ele":479.3,"mi":16.9016,"km":27.2005},{"lat":38.18948,"lon":-85.766791,"ele":478.3,"mi":16.9479,"km":27.275},{"lat":38.190097,"lon":-85.76672,"ele":475.1,"mi":16.9908,"km":27.344},{"lat":38.190693,"lon":-85.766753,"ele":472.4,"mi":17.032,"km":27.4104},{"lat":38.191281,"lon":-85.766764,"ele":468.5,"mi":17.0727,"km":27.4758},{"lat":38.191998,"lon":-85.766793,"ele":460.3,"mi":17.1222,"km":27.5556},{"lat":38.192659,"lon":-85.766812,"ele":458.0,"mi":17.168,"km":27.6292},{"lat":38.193243,"lon":-85.766809,"ele":457.7,"mi":17.2085,"km":27.6945},{"lat":38.193941,"lon":-85.766812,"ele":458.7,"mi":17.2568,"km":27.7721},{"lat":38.194507,"lon":-85.76685,"ele":459.0,"mi":17.296,"km":27.8352},{"lat":38.195209,"lon":-85.766873,"ele":459.0,"mi":17.3446,"km":27.9135},{"lat":38.195692,"lon":-85.766905,"ele":459.6,"mi":17.3781,"km":27.9673},{"lat":38.196453,"lon":-85.766942,"ele":458.0,"mi":17.4307,"km":28.0521},{"lat":38.197125,"lon":-85.766962,"ele":456.4,"mi":17.4772,"km":28.1268},{"lat":38.197626,"lon":-85.766961,"ele":455.7,"mi":17.5118,"km":28.1825},{"lat":38.198255,"lon":-85.766942,"ele":456.0,"mi":17.5553,"km":28.2526},{"lat":38.198996,"lon":-85.766846,"ele":456.0,"mi":17.6074,"km":28.3363},{"lat":38.199414,"lon":-85.766539,"ele":456.4,"mi":17.6409,"km":28.3902},{"lat":38.199969,"lon":-85.765948,"ele":456.4,"mi":17.6909,"km":28.4708},{"lat":38.200514,"lon":-85.765344,"ele":456.4,"mi":17.7409,"km":28.5512},{"lat":38.200871,"lon":-85.764976,"ele":456.4,"mi":17.7727,"km":28.6024},{"lat":38.201564,"lon":-85.764667,"ele":457.0,"mi":17.8237,"km":28.6844},{"lat":38.202256,"lon":-85.7645,"ele":457.7,"mi":17.8724,"km":28.7629},{"lat":38.202906,"lon":-85.764391,"ele":457.3,"mi":17.9178,"km":28.8359},{"lat":38.203413,"lon":-85.764256,"ele":456.7,"mi":17.9536,"km":28.8936},{"lat":38.20413,"lon":-85.764112,"ele":457.0,"mi":18.0038,"km":28.9743},{"lat":38.204723,"lon":-85.764003,"ele":457.0,"mi":18.0452,"km":29.041},{"lat":38.205289,"lon":-85.763917,"ele":457.0,"mi":18.0846,"km":29.1044},{"lat":38.206074,"lon":-85.763813,"ele":458.0,"mi":18.1392,"km":29.1922},{"lat":38.206672,"lon":-85.76369,"ele":459.0,"mi":18.1811,"km":29.2597},{"lat":38.20732,"lon":-85.763562,"ele":459.3,"mi":18.2265,"km":29.3328},{"lat":38.207874,"lon":-85.76347,"ele":459.3,"mi":18.2651,"km":29.3949},{"lat":38.208607,"lon":-85.763365,"ele":459.3,"mi":18.3162,"km":29.477},{"lat":38.209132,"lon":-85.76324,"ele":459.0,"mi":18.3531,"km":29.5365},{"lat":38.209767,"lon":-85.763133,"ele":459.3,"mi":18.3974,"km":29.6077},{"lat":38.210322,"lon":-85.763006,"ele":456.7,"mi":18.4364,"km":29.6705},{"lat":38.210962,"lon":-85.762868,"ele":449.1,"mi":18.4813,"km":29.7428},{"lat":38.211691,"lon":-85.762718,"ele":447.8,"mi":18.5323,"km":29.8249},{"lat":38.212336,"lon":-85.762625,"ele":452.1,"mi":18.5775,"km":29.8977},{"lat":38.212926,"lon":-85.762555,"ele":453.4,"mi":18.6185,"km":29.9635},{"lat":38.213627,"lon":-85.762396,"ele":451.8,"mi":18.6678,"km":30.0429},{"lat":38.214196,"lon":-85.762315,"ele":453.4,"mi":18.7074,"km":30.1066},{"lat":38.214897,"lon":-85.762199,"ele":459.0,"mi":18.7562,"km":30.1852},{"lat":38.215464,"lon":-85.762108,"ele":460.3,"mi":18.7957,"km":30.2488},{"lat":38.216111,"lon":-85.762003,"ele":459.6,"mi":18.8409,"km":30.3215},{"lat":38.216693,"lon":-85.76193,"ele":459.3,"mi":18.8813,"km":30.3865},{"lat":38.217307,"lon":-85.761827,"ele":459.3,"mi":18.9243,"km":30.4557},{"lat":38.218019,"lon":-85.761705,"ele":459.0,"mi":18.974,"km":30.5357},{"lat":38.218686,"lon":-85.761683,"ele":458.0,"mi":19.0204,"km":30.6104},{"lat":38.219306,"lon":-85.761501,"ele":457.7,"mi":19.0647,"km":30.6816},{"lat":38.219875,"lon":-85.76138,"ele":457.7,"mi":19.1046,"km":30.7458},{"lat":38.220399,"lon":-85.761304,"ele":457.7,"mi":19.1411,"km":30.8046},{"lat":38.221048,"lon":-85.761125,"ele":457.7,"mi":19.187,"km":30.8785},{"lat":38.22175,"lon":-85.761036,"ele":458.3,"mi":19.2358,"km":30.9569},{"lat":38.222335,"lon":-85.760944,"ele":458.7,"mi":19.2765,"km":31.0225},{"lat":38.222998,"lon":-85.760823,"ele":458.3,"mi":19.3228,"km":31.097},{"lat":38.223679,"lon":-85.760689,"ele":457.7,"mi":19.3708,"km":31.1743},{"lat":38.224332,"lon":-85.760578,"ele":456.7,"mi":19.4164,"km":31.2477},{"lat":38.224851,"lon":-85.7605,"ele":456.4,"mi":19.4526,"km":31.3059},{"lat":38.225504,"lon":-85.760376,"ele":456.4,"mi":19.4983,"km":31.3794},{"lat":38.226225,"lon":-85.760251,"ele":456.0,"mi":19.5486,"km":31.4604},{"lat":38.226817,"lon":-85.760138,"ele":455.7,"mi":19.5899,"km":31.527},{"lat":38.227511,"lon":-85.760015,"ele":454.4,"mi":19.6385,"km":31.6052},{"lat":38.228004,"lon":-85.759935,"ele":454.4,"mi":19.6729,"km":31.6605},{"lat":38.228755,"lon":-85.759834,"ele":454.7,"mi":19.7251,"km":31.7445},{"lat":38.2294,"lon":-85.759696,"ele":455.4,"mi":19.7704,"km":31.8174},{"lat":38.230046,"lon":-85.75959,"ele":456.0,"mi":19.8154,"km":31.8898},{"lat":38.230695,"lon":-85.759496,"ele":456.4,"mi":19.8606,"km":31.9626},{"lat":38.231225,"lon":-85.759375,"ele":456.7,"mi":19.8979,"km":32.0225},{"lat":38.23185,"lon":-85.759256,"ele":457.3,"mi":19.9415,"km":32.0928},{"lat":38.23249,"lon":-85.759176,"ele":457.7,"mi":19.986,"km":32.1643},{"lat":38.233188,"lon":-85.759104,"ele":458.0,"mi":20.0346,"km":32.2426},{"lat":38.233713,"lon":-85.759009,"ele":458.7,"mi":20.0716,"km":32.3021},{"lat":38.234439,"lon":-85.75882,"ele":459.0,"mi":20.1228,"km":32.3846},{"lat":38.235006,"lon":-85.758724,"ele":459.6,"mi":20.1624,"km":32.4482},{"lat":38.235596,"lon":-85.758638,"ele":460.0,"mi":20.2034,"km":32.5143},{"lat":38.236293,"lon":-85.758498,"ele":459.0,"mi":20.2523,"km":32.5929},{"lat":38.236971,"lon":-85.75844,"ele":458.7,"mi":20.3,"km":32.6697},{"lat":38.237604,"lon":-85.758275,"ele":458.0,"mi":20.3447,"km":32.7417},{"lat":38.238255,"lon":-85.758168,"ele":457.3,"mi":20.3901,"km":32.8147},{"lat":38.238708,"lon":-85.758088,"ele":457.7,"mi":20.4217,"km":32.8656},{"lat":38.239384,"lon":-85.757948,"ele":457.7,"mi":20.4694,"km":32.9423},{"lat":38.240143,"lon":-85.757784,"ele":457.7,"mi":20.5226,"km":33.0279},{"lat":38.240668,"lon":-85.757703,"ele":457.7,"mi":20.5592,"km":33.0868},{"lat":38.241279,"lon":-85.757602,"ele":457.7,"mi":20.6019,"km":33.1555},{"lat":38.241994,"lon":-85.757488,"ele":458.0,"mi":20.6517,"km":33.2357},{"lat":38.242546,"lon":-85.75736,"ele":457.0,"mi":20.6905,"km":33.2981},{"lat":38.243288,"lon":-85.757227,"ele":454.4,"mi":20.7423,"km":33.3815},{"lat":38.243865,"lon":-85.757124,"ele":453.4,"mi":20.7826,"km":33.4463},{"lat":38.244423,"lon":-85.757064,"ele":453.7,"mi":20.8214,"km":33.5087},{"lat":38.245201,"lon":-85.756929,"ele":454.7,"mi":20.8758,"km":33.5964},{"lat":38.245634,"lon":-85.757025,"ele":455.4,"mi":20.9062,"km":33.6453},{"lat":38.246404,"lon":-85.756767,"ele":459.0,"mi":20.9621,"km":33.7352},{"lat":38.247024,"lon":-85.756607,"ele":460.0,"mi":21.0058,"km":33.8056},{"lat":38.247672,"lon":-85.75649,"ele":460.3,"mi":21.0513,"km":33.8788},{"lat":38.24815,"lon":-85.756404,"ele":460.6,"mi":21.0847,"km":33.9325},{"lat":38.248889,"lon":-85.756236,"ele":461.0,"mi":21.1368,"km":34.0164},{"lat":38.249476,"lon":-85.756226,"ele":461.9,"mi":21.1775,"km":34.082},{"lat":38.250203,"lon":-85.756092,"ele":463.6,"mi":21.2291,"km":34.1649},{"lat":38.250644,"lon":-85.756089,"ele":463.9,"mi":21.2597,"km":34.2141},{"lat":38.251371,"lon":-85.755884,"ele":464.2,"mi":21.3113,"km":34.2973},{"lat":38.252072,"lon":-85.755809,"ele":465.2,"mi":21.3602,"km":34.3759},{"lat":38.25265,"lon":-85.755635,"ele":465.9,"mi":21.4015,"km":34.4424},{"lat":38.253271,"lon":-85.755486,"ele":466.5,"mi":21.4452,"km":34.5127},{"lat":38.2537,"lon":-85.755428,"ele":466.2,"mi":21.4764,"km":34.5628},{"lat":38.2537,"lon":-85.755428,"ele":466.2,"mi":21.4764,"km":34.5628},{"lat":38.25513,"lon":-85.755216,"ele":467.2,"mi":21.5758,"km":34.7229},{"lat":38.255616,"lon":-85.755117,"ele":468.2,"mi":21.6191,"km":34.7926},{"lat":38.256223,"lon":-85.754998,"ele":465.6,"mi":21.6616,"km":34.861},{"lat":38.256352,"lon":-85.754338,"ele":468.8,"mi":21.7043,"km":34.9297},{"lat":38.256355,"lon":-85.753436,"ele":465.9,"mi":21.7536,"km":35.0089},{"lat":38.25629,"lon":-85.752582,"ele":465.9,"mi":21.8002,"km":35.0841},{"lat":38.256252,"lon":-85.751792,"ele":464.9,"mi":21.8433,"km":35.1534},{"lat":38.256145,"lon":-85.751145,"ele":463.9,"mi":21.8792,"km":35.2111},{"lat":38.256037,"lon":-85.750168,"ele":463.9,"mi":21.9329,"km":35.2975},{"lat":38.255927,"lon":-85.749397,"ele":463.9,"mi":21.9754,"km":35.366},{"lat":38.25584,"lon":-85.748702,"ele":464.2,"mi":22.0136,"km":35.4275},{"lat":38.255794,"lon":-85.747828,"ele":463.9,"mi":22.0612,"km":35.504},{"lat":38.255712,"lon":-85.747118,"ele":464.2,"mi":22.1001,"km":35.5667},{"lat":38.255586,"lon":-85.746279,"ele":461.3,"mi":22.1466,"km":35.6414},{"lat":38.255463,"lon":-85.745359,"ele":459.0,"mi":22.1973,"km":35.7231},{"lat":38.255421,"lon":-85.744581,"ele":459.3,"mi":22.2396,"km":35.7912},{"lat":38.25534,"lon":-85.743801,"ele":459.3,"mi":22.2825,"km":35.8601},{"lat":38.25526,"lon":-85.743073,"ele":460.3,"mi":22.3224,"km":35.9245},{"lat":38.255234,"lon":-85.742545,"ele":460.3,"mi":22.3512,"km":35.9708},{"lat":38.255424,"lon":-85.741593,"ele":460.6,"mi":22.4089,"km":36.0637},{"lat":38.255952,"lon":-85.741258,"ele":457.0,"mi":22.4516,"km":36.1324},{"lat":38.256611,"lon":-85.74069,"ele":449.1,"mi":22.5068,"km":36.2211},{"lat":38.256643,"lon":-85.74001,"ele":448.5,"mi":22.5457,"km":36.2838},{"lat":38.256934,"lon":-85.739483,"ele":443.6,"mi":22.5904,"km":36.3558},{"lat":38.257621,"lon":-85.739398,"ele":442.6,"mi":22.6381,"km":36.4326},{"lat":38.258165,"lon":-85.739162,"ele":440.9,"mi":22.6799,"km":36.4997},{"lat":38.258526,"lon":-85.738626,"ele":440.6,"mi":22.7182,"km":36.5614},{"lat":38.25895,"lon":-85.738027,"ele":439.3,"mi":22.762,"km":36.6319},{"lat":38.259526,"lon":-85.737321,"ele":437.3,"mi":22.8176,"km":36.7214},{"lat":38.259983,"lon":-85.736968,"ele":434.7,"mi":22.8552,"km":36.7818},{"lat":38.26026,"lon":-85.736855,"ele":434.1,"mi":22.8753,"km":36.8142},{"lat":38.26026,"lon":-85.736855,"ele":434.1,"mi":22.8753,"km":36.8142},{"lat":38.261831,"lon":-85.736304,"ele":440.0,"mi":22.9932,"km":37.0039},{"lat":38.262088,"lon":-85.735618,"ele":441.3,"mi":23.0344,"km":37.0703},{"lat":38.262358,"lon":-85.73488,"ele":441.9,"mi":23.0787,"km":37.1416},{"lat":38.26257,"lon":-85.734053,"ele":442.6,"mi":23.1259,"km":37.2176},{"lat":38.262718,"lon":-85.73335,"ele":442.3,"mi":23.1655,"km":37.2813},{"lat":38.262864,"lon":-85.732642,"ele":440.9,"mi":23.2052,"km":37.3452},{"lat":38.263056,"lon":-85.731734,"ele":440.3,"mi":23.2563,"km":37.4273},{"lat":38.263197,"lon":-85.731065,"ele":440.6,"mi":23.2939,"km":37.4879},{"lat":38.26334,"lon":-85.730237,"ele":440.9,"mi":23.3399,"km":37.5619},{"lat":38.263507,"lon":-85.729311,"ele":440.0,"mi":23.3915,"km":37.645},{"lat":38.263641,"lon":-85.728583,"ele":439.6,"mi":23.4321,"km":37.7103},{"lat":38.263743,"lon":-85.727931,"ele":440.6,"mi":23.4682,"km":37.7685},{"lat":38.263963,"lon":-85.726955,"ele":440.9,"mi":23.5234,"km":37.8573},{"lat":38.264204,"lon":-85.726322,"ele":440.6,"mi":23.5616,"km":37.9188},{"lat":38.264468,"lon":-85.725627,"ele":440.6,"mi":23.6036,"km":37.9862},{"lat":38.264765,"lon":-85.72478,"ele":440.9,"mi":23.6539,"km":38.0673},{"lat":38.265037,"lon":-85.724046,"ele":440.9,"mi":23.698,"km":38.1382},{"lat":38.265275,"lon":-85.723425,"ele":440.3,"mi":23.7355,"km":38.1985},{"lat":38.265552,"lon":-85.722606,"ele":441.6,"mi":23.7839,"km":38.2764},{"lat":38.265771,"lon":-85.721988,"ele":442.6,"mi":23.8207,"km":38.3357},{"lat":38.26605,"lon":-85.721176,"ele":444.2,"mi":23.8688,"km":38.4131},{"lat":38.266358,"lon":-85.720395,"ele":444.2,"mi":23.9163,"km":38.4895},{"lat":38.266616,"lon":-85.719751,"ele":443.6,"mi":23.9556,"km":38.5528},{"lat":38.266892,"lon":-85.718958,"ele":442.3,"mi":24.0027,"km":38.6286},{"lat":38.267198,"lon":-85.718162,"ele":440.9,"mi":24.0509,"km":38.7062},{"lat":38.267458,"lon":-85.717572,"ele":440.3,"mi":24.0877,"km":38.7654},{"lat":38.267807,"lon":-85.716777,"ele":441.3,"mi":24.1372,"km":38.845},{"lat":38.268116,"lon":-85.716066,"ele":441.3,"mi":24.1813,"km":38.916},{"lat":38.268331,"lon":-85.715768,"ele":440.9,"mi":24.2235,"km":38.9839},{"lat":38.267936,"lon":-85.716534,"ele":441.3,"mi":24.2732,"km":39.064},{"lat":38.267601,"lon":-85.717231,"ele":440.9,"mi":24.3176,"km":39.1354},{"lat":38.267296,"lon":-85.717856,"ele":440.6,"mi":24.3575,"km":39.1997},{"lat":38.267005,"lon":-85.718561,"ele":441.6,"mi":24.4008,"km":39.2693},{"lat":38.266718,"lon":-85.719348,"ele":442.6,"mi":24.4479,"km":39.3451},{"lat":38.266445,"lon":-85.720114,"ele":444.2,"mi":24.4936,"km":39.4186},{"lat":38.266195,"lon":-85.720772,"ele":444.6,"mi":24.5332,"km":39.4824},{"lat":38.265909,"lon":-85.721591,"ele":443.6,"mi":24.5819,"km":39.5607},{"lat":38.265673,"lon":-85.722263,"ele":442.3,"mi":24.6218,"km":39.6249},{"lat":38.265398,"lon":-85.723018,"ele":440.9,"mi":24.667,"km":39.6977},{"lat":38.265155,"lon":-85.723663,"ele":440.6,"mi":24.7058,"km":39.7601},{"lat":38.26482,"lon":-85.724558,"ele":441.3,"mi":24.7596,"km":39.8468},{"lat":38.264591,"lon":-85.725262,"ele":440.9,"mi":24.801,"km":39.9133},{"lat":38.26436,"lon":-85.725887,"ele":440.6,"mi":24.8385,"km":39.9737},{"lat":38.264088,"lon":-85.726654,"ele":441.3,"mi":24.8842,"km":40.0472},{"lat":38.26386,"lon":-85.727482,"ele":440.9,"mi":24.9318,"km":40.1239},{"lat":38.263698,"lon":-85.728258,"ele":440.0,"mi":24.9755,"km":40.1941},{"lat":38.263539,"lon":-85.729071,"ele":440.0,"mi":25.021,"km":40.2674},{"lat":38.26341,"lon":-85.72972,"ele":440.9,"mi":25.0573,"km":40.3259},{"lat":38.263238,"lon":-85.730544,"ele":440.9,"mi":25.1036,"km":40.4003},{"lat":38.263077,"lon":-85.731257,"ele":440.6,"mi":25.1438,"km":40.4651},{"lat":38.262919,"lon":-85.732135,"ele":440.9,"mi":25.1927,"km":40.5438},{"lat":38.262743,"lon":-85.733015,"ele":441.9,"mi":25.242,"km":40.6231},{"lat":38.262594,"lon":-85.733803,"ele":442.6,"mi":25.286,"km":40.6939},{"lat":38.262418,"lon":-85.734643,"ele":442.3,"mi":25.3332,"km":40.7698},{"lat":38.26221,"lon":-85.735273,"ele":441.9,"mi":25.3703,"km":40.8295},{"lat":38.26185,"lon":-85.736052,"ele":439.6,"mi":25.4193,"km":40.9085},{"lat":38.26151,"lon":-85.7366,"ele":440.6,"mi":25.4575,"km":40.9699},{"lat":38.261082,"lon":-85.736656,"ele":433.7,"mi":25.4876,"km":41.0183},{"lat":38.261082,"lon":-85.736656,"ele":433.7,"mi":25.4876,"km":41.0183},{"lat":38.259594,"lon":-85.737275,"ele":437.0,"mi":25.5981,"km":41.1962},{"lat":38.25919,"lon":-85.73769,"ele":438.6,"mi":25.634,"km":41.2539},{"lat":38.258737,"lon":-85.738324,"ele":440.0,"mi":25.6806,"km":41.3288},{"lat":38.258276,"lon":-85.739002,"ele":440.6,"mi":25.7293,"km":41.4073},{"lat":38.257827,"lon":-85.739421,"ele":442.6,"mi":25.7689,"km":41.471},{"lat":38.257229,"lon":-85.739445,"ele":441.9,"mi":25.8104,"km":41.5378},{"lat":38.256527,"lon":-85.739628,"ele":447.2,"mi":25.8616,"km":41.6201},{"lat":38.25661,"lon":-85.740306,"ele":448.5,"mi":25.899,"km":41.6804},{"lat":38.256402,"lon":-85.740921,"ele":451.4,"mi":25.9376,"km":41.7426},{"lat":38.25576,"lon":-85.74152,"ele":460.0,"mi":25.9936,"km":41.8327},{"lat":38.255228,"lon":-85.741461,"ele":461.6,"mi":26.0311,"km":41.893},{"lat":38.254764,"lon":-85.741703,"ele":463.3,"mi":26.0661,"km":41.9493},{"lat":38.254764,"lon":-85.741703,"ele":463.3,"mi":26.0661,"km":41.9493},{"lat":38.255245,"lon":-85.74328,"ele":460.3,"mi":26.1606,"km":42.1015},{"lat":38.255278,"lon":-85.74408,"ele":459.0,"mi":26.2041,"km":42.1714},{"lat":38.255405,"lon":-85.745072,"ele":458.7,"mi":26.2587,"km":42.2593},{"lat":38.255473,"lon":-85.745889,"ele":458.7,"mi":26.3033,"km":42.331},{"lat":38.256031,"lon":-85.745937,"ele":455.4,"mi":26.3452,"km":42.3986},{"lat":38.256603,"lon":-85.745684,"ele":450.1,"mi":26.3873,"km":42.4662},{"lat":38.257174,"lon":-85.745593,"ele":446.2,"mi":26.4271,"km":42.5303}],"miMarkers":[{"n":1,"lat":38.257779,"lon":-85.767289,"ele":462.3},{"n":2,"lat":38.257364,"lon":-85.775695,"ele":459.0},{"n":3,"lat":38.252849,"lon":-85.780772,"ele":455.4},{"n":4,"lat":38.246958,"lon":-85.766856,"ele":450.8},{"n":5,"lat":38.238438,"lon":-85.759676,"ele":456.7},{"n":6,"lat":38.229119,"lon":-85.761481,"ele":458.7},{"n":7,"lat":38.214605,"lon":-85.763967,"ele":448.8},{"n":8,"lat":38.205752,"lon":-85.771785,"ele":451.1},{"n":9,"lat":38.203738,"lon":-85.764194,"ele":456.7},{"n":10,"lat":38.189889,"lon":-85.766744,"ele":476.4},{"n":11,"lat":38.176704,"lon":-85.772389,"ele":469.8},{"n":12,"lat":38.168151,"lon":-85.783337,"ele":564.0},{"n":13,"lat":38.162387,"lon":-85.793349,"ele":561.7},{"n":14,"lat":38.153818,"lon":-85.784383,"ele":566.6},{"n":15,"lat":38.166072,"lon":-85.78092,"ele":533.8},{"n":16,"lat":38.17707,"lon":-85.772133,"ele":469.5},{"n":17,"lat":38.190241,"lon":-85.766725,"ele":474.4},{"n":18,"lat":38.20413,"lon":-85.764112,"ele":457.0},{"n":19,"lat":38.218408,"lon":-85.761644,"ele":458.3},{"n":20,"lat":38.232699,"lon":-85.759118,"ele":457.7},{"n":21,"lat":38.247024,"lon":-85.756607,"ele":460.0},{"n":22,"lat":38.25587,"lon":-85.748949,"ele":464.6},{"n":23,"lat":38.261952,"lon":-85.736007,"ele":439.6},{"n":24,"lat":38.266892,"lon":-85.718958,"ele":442.3},{"n":25,"lat":38.263591,"lon":-85.728736,"ele":439.6},{"n":26,"lat":38.255647,"lon":-85.741457,"ele":460.3}],"kmMarkers":[{"n":1,"lat":38.257003,"lon":-85.760424,"ele":466.9},{"n":2,"lat":38.258259,"lon":-85.771829,"ele":457.7},{"n":3,"lat":38.257627,"lon":-85.778021,"ele":456.7},{"n":4,"lat":38.252803,"lon":-85.772474,"ele":457.3},{"n":5,"lat":38.251424,"lon":-85.780676,"ele":456.7},{"n":6,"lat":38.247971,"lon":-85.771587,"ele":455.1},{"n":7,"lat":38.246253,"lon":-85.760614,"ele":454.1},{"n":8,"lat":38.238773,"lon":-85.759598,"ele":457.0},{"n":9,"lat":38.231587,"lon":-85.762711,"ele":460.3},{"n":10,"lat":38.225896,"lon":-85.761878,"ele":456.4},{"n":11,"lat":38.217035,"lon":-85.76343,"ele":458.7},{"n":12,"lat":38.208178,"lon":-85.765042,"ele":459.3},{"n":13,"lat":38.205204,"lon":-85.771305,"ele":452.8},{"n":14,"lat":38.204611,"lon":-85.767817,"ele":445.2},{"n":15,"lat":38.199561,"lon":-85.766281,"ele":456.4},{"n":16,"lat":38.190668,"lon":-85.766759,"ele":472.4},{"n":17,"lat":38.181975,"lon":-85.768371,"ele":468.8},{"n":18,"lat":38.174712,"lon":-85.774652,"ele":471.1},{"n":19,"lat":38.168049,"lon":-85.781578,"ele":521.3},{"n":20,"lat":38.167321,"lon":-85.790119,"ele":527.6},{"n":21,"lat":38.161818,"lon":-85.793529,"ele":572.5},{"n":22,"lat":38.154848,"lon":-85.788436,"ele":538.7},{"n":23,"lat":38.15629,"lon":-85.780497,"ele":509.2},{"n":24,"lat":38.164683,"lon":-85.780858,"ele":529.5},{"n":25,"lat":38.172188,"lon":-85.778155,"ele":471.5},{"n":26,"lat":38.17915,"lon":-85.771325,"ele":465.2},{"n":27,"lat":38.187074,"lon":-85.767177,"ele":476.7},{"n":28,"lat":38.195985,"lon":-85.76694,"ele":459.0},{"n":29,"lat":38.204434,"lon":-85.764051,"ele":457.3},{"n":30,"lat":38.213316,"lon":-85.762478,"ele":452.4},{"n":31,"lat":38.22214,"lon":-85.760971,"ele":458.7},{"n":32,"lat":38.231225,"lon":-85.759375,"ele":456.7},{"n":33,"lat":38.240029,"lon":-85.757806,"ele":457.7},{"n":34,"lat":38.248889,"lon":-85.756236,"ele":461.0},{"n":35,"lat":38.256355,"lon":-85.753436,"ele":465.9},{"n":36,"lat":38.255239,"lon":-85.741862,"ele":462.6},{"n":37,"lat":38.261831,"lon":-85.736304,"ele":440.0},{"n":38,"lat":38.26453,"lon":-85.725446,"ele":440.6},{"n":39,"lat":38.268197,"lon":-85.716018,"ele":441.3},{"n":40,"lat":38.264197,"lon":-85.726362,"ele":440.9},{"n":41,"lat":38.261082,"lon":-85.736656,"ele":433.7},{"n":42,"lat":38.255238,"lon":-85.743029,"ele":460.3}],"miSummary":[{"n":1,"gain_ft":17.7,"loss_ft":20.3,"start_ft":464.9,"end_ft":462.3,"frac":1.0},{"n":2,"gain_ft":11.2,"loss_ft":14.4,"start_ft":462.3,"end_ft":459.0,"frac":1.0},{"n":3,"gain_ft":15.1,"loss_ft":19.0,"start_ft":459.0,"end_ft":455.4,"frac":1.0},{"n":4,"gain_ft":8.9,"loss_ft":13.5,"start_ft":455.4,"end_ft":450.8,"frac":1.0},{"n":5,"gain_ft":12.5,"loss_ft":6.6,"start_ft":450.8,"end_ft":456.7,"frac":1.0},{"n":6,"gain_ft":9.8,"loss_ft":7.9,"start_ft":456.7,"end_ft":458.7,"frac":1.0},{"n":7,"gain_ft":7.2,"loss_ft":17.1,"start_ft":458.7,"end_ft":448.8,"frac":1.0},{"n":8,"gain_ft":11.2,"loss_ft":8.9,"start_ft":448.8,"end_ft":451.1,"frac":1.0},{"n":9,"gain_ft":21.3,"loss_ft":15.7,"start_ft":451.1,"end_ft":456.7,"frac":1.0},{"n":10,"gain_ft":24.9,"loss_ft":5.2,"start_ft":456.7,"end_ft":476.4,"frac":1.0},{"n":11,"gain_ft":9.2,"loss_ft":15.7,"start_ft":476.4,"end_ft":469.8,"frac":1.0},{"n":12,"gain_ft":91.9,"loss_ft":0.7,"start_ft":469.8,"end_ft":564.0,"frac":1.0},{"n":13,"gain_ft":80.4,"loss_ft":86.6,"start_ft":564.0,"end_ft":561.7,"frac":1.0},{"n":14,"gain_ft":88.6,"loss_ft":80.1,"start_ft":561.7,"end_ft":566.6,"frac":1.0},{"n":15,"gain_ft":31.8,"loss_ft":65.0,"start_ft":566.6,"end_ft":533.8,"frac":1.0},{"n":16,"gain_ft":1.6,"loss_ft":65.9,"start_ft":533.8,"end_ft":469.5,"frac":1.0},{"n":17,"gain_ft":15.7,"loss_ft":10.8,"start_ft":469.5,"end_ft":474.4,"frac":1.0},{"n":18,"gain_ft":5.6,"loss_ft":23.0,"start_ft":474.4,"end_ft":457.0,"frac":1.0},{"n":19,"gain_ft":17.7,"loss_ft":16.4,"start_ft":457.0,"end_ft":458.3,"frac":1.0},{"n":20,"gain_ft":4.9,"loss_ft":5.6,"start_ft":458.3,"end_ft":457.7,"frac":1.0},{"n":21,"gain_ft":11.2,"loss_ft":8.9,"start_ft":457.7,"end_ft":460.0,"frac":1.0},{"n":22,"gain_ft":14.8,"loss_ft":10.2,"start_ft":460.0,"end_ft":464.6,"frac":1.0},{"n":23,"gain_ft":13.8,"loss_ft":38.7,"start_ft":464.6,"end_ft":439.6,"frac":1.0},{"n":24,"gain_ft":10.2,"loss_ft":7.5,"start_ft":439.6,"end_ft":442.3,"frac":1.0},{"n":25,"gain_ft":6.9,"loss_ft":9.5,"start_ft":442.3,"end_ft":439.6,"frac":1.0},{"n":26,"gain_ft":32.5,"loss_ft":11.8,"start_ft":439.6,"end_ft":460.3,"frac":1.0},{"n":27,"gain_ft":2.6,"loss_ft":17.4,"start_ft":460.3,"end_ft":445.5,"frac":0.4371}],"kmSummary":[{"n":1,"gain_ft":14.4,"loss_ft":12.5,"start_ft":464.9,"end_ft":466.9,"frac":1.0},{"n":2,"gain_ft":3.6,"loss_ft":12.8,"start_ft":466.9,"end_ft":457.7,"frac":1.0},{"n":3,"gain_ft":8.5,"loss_ft":9.5,"start_ft":457.7,"end_ft":456.7,"frac":1.0},{"n":4,"gain_ft":8.2,"loss_ft":7.5,"start_ft":456.7,"end_ft":457.3,"frac":1.0},{"n":5,"gain_ft":11.2,"loss_ft":11.8,"start_ft":457.3,"end_ft":456.7,"frac":1.0},{"n":6,"gain_ft":6.2,"loss_ft":7.9,"start_ft":456.7,"end_ft":455.1,"frac":1.0},{"n":7,"gain_ft":6.2,"loss_ft":7.2,"start_ft":455.1,"end_ft":454.1,"frac":1.0},{"n":8,"gain_ft":7.2,"loss_ft":4.3,"start_ft":454.1,"end_ft":457.0,"frac":1.0},{"n":9,"gain_ft":5.9,"loss_ft":2.6,"start_ft":457.0,"end_ft":460.3,"frac":1.0},{"n":10,"gain_ft":3.9,"loss_ft":7.9,"start_ft":460.3,"end_ft":456.4,"frac":1.0},{"n":11,"gain_ft":5.6,"loss_ft":3.3,"start_ft":456.4,"end_ft":458.7,"frac":1.0},{"n":12,"gain_ft":12.8,"loss_ft":12.1,"start_ft":458.7,"end_ft":459.3,"frac":1.0},{"n":13,"gain_ft":2.3,"loss_ft":8.9,"start_ft":459.3,"end_ft":452.8,"frac":1.0},{"n":14,"gain_ft":6.2,"loss_ft":13.8,"start_ft":452.8,"end_ft":445.2,"frac":1.0},{"n":15,"gain_ft":14.8,"loss_ft":3.6,"start_ft":445.2,"end_ft":456.4,"frac":1.0},{"n":16,"gain_ft":19.0,"loss_ft":3.0,"start_ft":456.4,"end_ft":472.4,"frac":1.0},{"n":17,"gain_ft":6.9,"loss_ft":10.5,"start_ft":472.4,"end_ft":468.8,"frac":1.0},{"n":18,"gain_ft":7.5,"loss_ft":5.2,"start_ft":468.8,"end_ft":471.1,"frac":1.0},{"n":19,"gain_ft":50.9,"loss_ft":0.7,"start_ft":471.1,"end_ft":521.3,"frac":1.0},{"n":20,"gain_ft":62.7,"loss_ft":56.4,"start_ft":521.3,"end_ft":527.6,"frac":1.0},{"n":21,"gain_ft":75.1,"loss_ft":30.2,"start_ft":527.6,"end_ft":572.5,"frac":1.0},{"n":22,"gain_ft":25.3,"loss_ft":59.1,"start_ft":572.5,"end_ft":538.7,"frac":1.0},{"n":23,"gain_ft":52.5,"loss_ft":82.0,"start_ft":538.7,"end_ft":509.2,"frac":1.0},{"n":24,"gain_ft":27.9,"loss_ft":7.5,"start_ft":509.2,"end_ft":529.5,"frac":1.0},{"n":25,"gain_ft":5.2,"loss_ft":63.3,"start_ft":529.5,"end_ft":471.5,"frac":1.0},{"n":26,"gain_ft":0.7,"loss_ft":6.9,"start_ft":471.5,"end_ft":465.2,"frac":1.0},{"n":27,"gain_ft":13.1,"loss_ft":1.6,"start_ft":465.2,"end_ft":476.7,"frac":1.0},{"n":28,"gain_ft":4.9,"loss_ft":22.6,"start_ft":476.7,"end_ft":459.0,"frac":1.0},{"n":29,"gain_ft":3.6,"loss_ft":5.2,"start_ft":459.0,"end_ft":457.3,"frac":1.0},{"n":30,"gain_ft":8.5,"loss_ft":13.5,"start_ft":457.3,"end_ft":452.4,"frac":1.0},{"n":31,"gain_ft":10.2,"loss_ft":3.9,"start_ft":452.4,"end_ft":458.7,"frac":1.0},{"n":32,"gain_ft":2.6,"loss_ft":4.6,"start_ft":458.7,"end_ft":456.7,"frac":1.0},{"n":33,"gain_ft":4.6,"loss_ft":3.6,"start_ft":456.7,"end_ft":457.7,"frac":1.0},{"n":34,"gain_ft":8.5,"loss_ft":5.2,"start_ft":457.7,"end_ft":461.0,"frac":1.0},{"n":35,"gain_ft":11.8,"loss_ft":6.9,"start_ft":461.0,"end_ft":465.9,"frac":1.0},{"n":36,"gain_ft":7.2,"loss_ft":10.5,"start_ft":465.9,"end_ft":462.6,"frac":1.0},{"n":37,"gain_ft":8.2,"loss_ft":30.8,"start_ft":462.6,"end_ft":440.0,"frac":1.0},{"n":38,"gain_ft":5.2,"loss_ft":4.6,"start_ft":440.0,"end_ft":440.6,"frac":1.0},{"n":39,"gain_ft":6.2,"loss_ft":5.6,"start_ft":440.6,"end_ft":441.3,"frac":1.0},{"n":40,"gain_ft":5.2,"loss_ft":5.6,"start_ft":441.3,"end_ft":440.9,"frac":1.0},{"n":41,"gain_ft":5.2,"loss_ft":12.5,"start_ft":440.9,"end_ft":433.7,"frac":1.0},{"n":42,"gain_ft":30.2,"loss_ft":3.6,"start_ft":433.7,"end_ft":460.3,"frac":1.0},{"n":43,"gain_ft":0.0,"loss_ft":14.8,"start_ft":460.3,"end_ft":445.5,"frac":0.5464}],"aidStations":[{"mi":1.5,"km":2.41,"lat":38.258766,"lon":-85.776356,"powerade":false,"medical":false},{"mi":3.0,"km":4.83,"lat":38.252849,"lon":-85.780772,"powerade":false,"medical":false},{"mi":4.5,"km":7.24,"lat":38.245602,"lon":-85.758539,"powerade":false,"medical":false},{"mi":6.0,"km":9.66,"lat":38.229119,"lon":-85.761481,"powerade":true,"medical":true},{"mi":7.5,"km":12.07,"lat":38.207699,"lon":-85.765115,"powerade":false,"medical":false},{"mi":9.0,"km":14.48,"lat":38.203738,"lon":-85.764194,"powerade":false,"medical":false},{"mi":10.5,"km":16.9,"lat":38.182798,"lon":-85.767918,"powerade":false,"medical":false},{"mi":12.0,"km":19.31,"lat":38.168151,"lon":-85.783337,"powerade":true,"medical":false},{"mi":13.5,"km":21.73,"lat":38.157025,"lon":-85.789979,"powerade":false,"medical":true},{"mi":15.0,"km":24.14,"lat":38.166072,"lon":-85.78092,"powerade":false,"medical":false},{"mi":16.5,"km":26.55,"lat":38.183114,"lon":-85.767857,"powerade":false,"medical":false},{"mi":18.0,"km":28.97,"lat":38.20413,"lon":-85.764112,"powerade":true,"medical":false},{"mi":19.5,"km":31.38,"lat":38.225702,"lon":-85.760338,"powerade":false,"medical":false},{"mi":21.0,"km":33.8,"lat":38.247024,"lon":-85.756607,"powerade":false,"medical":true},{"mi":22.5,"km":36.21,"lat":38.256611,"lon":-85.74069,"powerade":false,"medical":false},{"mi":24.0,"km":38.62,"lat":38.266892,"lon":-85.718958,"powerade":true,"medical":false},{"mi":25.5,"km":41.04,"lat":38.260152,"lon":-85.737007,"powerade":false,"medical":false}],"fuelPoints":[{"mi":4,"km":6.44,"lat":38.246958,"lon":-85.766856},{"mi":8,"km":12.87,"lat":38.205752,"lon":-85.771785},{"mi":11,"km":17.7,"lat":38.176704,"lon":-85.772389},{"mi":16,"km":25.75,"lat":38.17707,"lon":-85.772133},{"mi":20,"km":32.19,"lat":38.232699,"lon":-85.759118},{"mi":24,"km":38.62,"lat":38.266892,"lon":-85.718958}],"miCues":{"1":"Bring it down. Crowd + adrenaline = the #1 KDF blowup. Cap +3 sec/mi (+2 sec/km) over goal.","3":"First 5K should be ~20:15 at goal B pace. If under 19:45, slow down NOW.","5":"Settle. Find a pack moving your pace and hide in it.","8":"Halfway to halfway. Quick form check: shoulders, hips, breathing.","10":"Mild +20 ft bump - last warning shot before the climb.","11":"Take a gel + full cup of fluid here. You climb in 1 mile - fuel BEFORE.","12":"THE CLIMB. +94 ft sustained. Hold EFFORT, not pace. Lose 20-30s, that's OK.","13":"Rolling inside Iroquois. Short stride up, open down. Stay smooth.","14":"Still in the park. Don't try to make up the time you lost on mile 12.","15":"Net -33 ft. Free pace coming - but DO NOT hammer. Quads matter at mile 23.","16":"Big descent (-64 ft net). High cadence, soft feet. 'Fall' downhill.","17":"Out of the park. Give it 0.5 mi to find your rhythm again.","20":"10K to go. Re-evaluate. On pace + HR sustainable = start nudging 2 sec/mi faster.","22":"5K to go. The race starts here.","23":"-25 ft mile. Free pace. Cash it in.","25":"Pick off one runner at a time. Don't look at the watch - look at backs.","26":"Small +20 ft bump near the finish. Empty the tank. You're home."},"kmCues":{"2":"Bring it down. Crowd + adrenaline = the #1 KDF blowup. Cap +2 sec/km over goal.","5":"5K split should be ~20:15 at goal B pace. If you're under 19:45, slow down NOW.","8":"Settle. Find a pack moving your pace and hide in it.","13":"Quick form check: shoulders, hips, breathing.","16":"Mild +20 ft bump approaching - last warning before the big climb at km 19.","18":"Take a gel + full cup of fluid HERE. You climb in 1 km - fuel BEFORE.","19":"THE CLIMB STARTS. ~30 m of vertical over the next 1.5 km. EFFORT, not pace. Expect to lose 15-20 sec/km.","21":"Rolling inside Iroquois Park. Short stride up, open down. Stay smooth.","23":"Still in the park - punchy rollers. Don't try to make up the climb's lost time.","25":"Big descent now (~30 m down over 2 km). High cadence, soft feet. Do NOT hammer - quads at km 37 will pay.","27":"Out of the park. Give it 1 km to find your rhythm again.","32":"10 km to go. Re-evaluate. If on pace + HR sustainable = start nudging 1-2 sec/km faster.","35":"5 km to go (a parkrun). The race starts here.","37":"-7 m of free pace through here. Cash it in.","40":"Pick off one runner at a time. Don't look at the watch - look at backs.","42":"Small +6 m bump just before the finish. Empty the tank. You're home."}};
+
+let unit = "km";   // "mi" or "km"
+
+// Phase boundaries in MILES (canonical)
+const PHASE_MI = {p1End:11, p2End:16.2};
+function phaseColorMi(mi){ if(mi<PHASE_MI.p1End) return "#3fb950"; if(mi<PHASE_MI.p2End) return "#f85149"; return "#58a6ff"; }
+function phaseColorKm(km){ return phaseColorMi(km/1.609344); }
+function phaseColor(d){ return unit==="mi" ? phaseColorMi(d) : phaseColorKm(d); }
+function phaseClass(mi){ if(mi<=11) return "flat"; if(mi<=16) return "hill"; return "grind"; }
+
+// Pace conversions; goals stored in sec/mi
+// Set by km pace then convert: 1 km = 1.609344 mi conversion factor for sec/mi
+const GOALS = [
+  {key:"A", label:"Stretch",   sec_km:240}, // 4:00/km -> 2:48:50 (cert) / 2:50:11 (GPX)
+  {key:"B", label:"Watch pred",sec_km:243}, // 4:03/km -> 2:50:55 / 2:52:19
+  {key:"C", label:"Sim pace",  sec_km:248}, // 4:08/km -> 2:54:24 / 2:55:51
+];
+GOALS.forEach(g=>{
+  g.sec_mi = g.sec_km * 1.609344;
+  g.total = Math.round(g.sec_mi * DATA.totalMi);
+});
+let activeGoal = "B";
+
+function fmt(t){
+  let total=Math.round(t);
+  const h=Math.floor(total/3600);
+  const m=Math.floor((total%3600)/60);
+  const s=total%60;
+  return (h?h+":":"")+(h?String(m).padStart(2,"0"):m)+":"+String(s).padStart(2,"0");
+}
+function paceStr(secPerUnit){
+  let total=Math.round(secPerUnit);
+  const m=Math.floor(total/60);
+  const s=total%60;
+  return m+":"+String(s).padStart(2,"0");
+}
+function unitLabel(){ return unit; }
+function totalDist(){ return unit==="mi" ? DATA.totalMi : DATA.totalKm; }
+function goalPaceSec(g){ return unit==="mi" ? g.sec_mi : g.sec_km; }
+function summary(){ return unit==="mi" ? DATA.miSummary : DATA.kmSummary; }
+function markers(){ return unit==="mi" ? DATA.miMarkers : DATA.kmMarkers; }
+function cues(){ return unit==="mi" ? DATA.miCues : DATA.kmCues; }
+
+// ===== Map =====
+const map = L.map("map", {zoomControl:true}).fitBounds([[DATA.bbox[0],DATA.bbox[1]],[DATA.bbox[2],DATA.bbox[3]]]);
+L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+  attribution:'&copy; OpenStreetMap &copy; CARTO', maxZoom:19, subdomains:"abcd"
+}).addTo(map);
+
+// Phase-colored route (segmented polylines so colors change at boundaries)
+let segPts = []; let prevColor = phaseColorMi(DATA.route[0].mi);
+DATA.route.forEach((p)=>{
+  const c = phaseColorMi(p.mi);
+  if(c!==prevColor && segPts.length){
+    L.polyline(segPts,{color:prevColor,weight:5,opacity:.92}).addTo(map);
+    segPts = [segPts[segPts.length-1]];
+    prevColor = c;
+  }
+  segPts.push([p.lat,p.lon]);
+});
+if(segPts.length>1) L.polyline(segPts,{color:prevColor,weight:5,opacity:.92}).addTo(map);
+
+// Layer groups so we can swap unit-dependent markers
+const distMarkerLayer = L.layerGroup().addTo(map);
+const aidLayer = L.layerGroup().addTo(map);
+const fuelLayer = L.layerGroup().addTo(map);
+
+function renderDistanceMarkers(){
+  distMarkerLayer.clearLayers();
+  const ms = markers();
+  const cls = unit==="mi" ? "mile-marker" : "km-marker";
+  const sz = unit==="mi" ? 22 : 20;
+  ms.forEach(m=>{
+    L.marker([m.lat,m.lon], {icon: L.divIcon({className:"",html:`<div class="${cls}">${m.n}</div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]})})
+      .bindTooltip(`${unit==="mi"?"Mile":"Km"} ${m.n} - ${m.ele.toFixed(0)} ft`,{direction:"top"})
+      .addTo(distMarkerLayer);
+  });
+}
+
+function renderAidStations(){
+  aidLayer.clearLayers();
+  DATA.aidStations.forEach(a=>{
+    const cls = a.medical ? "aid-marker medical" : a.powerade ? "aid-marker powerade" : "aid-marker";
+    const t = a.medical ? "Medical + Aid" : a.powerade ? "Water + Powerade" : "Water";
+    const dist = unit==="mi" ? `Mi ${a.mi.toFixed(1)}` : `Km ${a.km.toFixed(1)}`;
+    L.marker([a.lat,a.lon],{icon:L.divIcon({className:"",html:`<div class="${cls}"></div>`,iconSize:[14,14],iconAnchor:[7,7]})})
+      .bindTooltip(`~${dist} - ${t}`,{direction:"top"})
+      .addTo(aidLayer);
+  });
+}
+
+function renderFuelMarkers(){
+  fuelLayer.clearLayers();
+  DATA.fuelPoints.forEach(f=>{
+    const dist = unit==="mi" ? `Mi ${f.mi}` : `Km ${f.km.toFixed(1)}`;
+    L.marker([f.lat,f.lon],{icon:L.divIcon({className:"",html:`<div class="fuel-marker">G</div>`,iconSize:[18,18],iconAnchor:[9,9]})})
+      .bindTooltip(`${dist} - take a gel`,{direction:"top"})
+      .addTo(fuelLayer);
+  });
+}
+
+L.marker([DATA.start.lat,DATA.start.lon],{icon:L.divIcon({className:"",html:`<div class="startfin start">S</div>`,iconSize:[20,20],iconAnchor:[10,10]})})
+  .bindTooltip("Start",{permanent:true,direction:"top",offset:[0,-6]}).addTo(map);
+L.marker([DATA.finish.lat,DATA.finish.lon],{icon:L.divIcon({className:"",html:`<div class="startfin finish">F</div>`,iconSize:[20,20],iconAnchor:[10,10]})})
+  .bindTooltip("Finish",{permanent:true,direction:"top",offset:[0,-6]}).addTo(map);
+
+const posMarker = L.circleMarker([DATA.start.lat,DATA.start.lon],{radius:8,color:"#ff7a45",weight:3,fillColor:"#ff7a45",fillOpacity:1}).addTo(map);
+posMarker.setStyle({opacity:0,fillOpacity:0});
+
+// ===== Elevation chart =====
+const ctx = document.getElementById("elevChart").getContext("2d");
+let elevChart;
+
+function buildChart(){
+  if(elevChart) elevChart.destroy();
+  const data = DATA.route.map(p=>({x: unit==="mi"?p.mi:p.km, y:p.ele}));
+  const total = totalDist();
+  // gradient transition fractions
+  const f1 = unit==="mi" ? PHASE_MI.p1End/DATA.totalMi : (PHASE_MI.p1End*1.609344)/DATA.totalKm;
+  const f2 = unit==="mi" ? PHASE_MI.p2End/DATA.totalMi : (PHASE_MI.p2End*1.609344)/DATA.totalKm;
+
+  elevChart = new Chart(ctx, {
+    type:"line",
+    data:{ datasets:[{
+      data, parsing:false, borderColor:"#ff7a45", borderWidth:1.5,
+      pointRadius:0, fill:true,
+      backgroundColor:(c)=>{
+        const {chart}=c; const {ctx,chartArea}=chart; if(!chartArea) return null;
+        const g = ctx.createLinearGradient(0,0, chartArea.right,0);
+        g.addColorStop(0, "rgba(63,185,80,.25)");
+        g.addColorStop(f1, "rgba(63,185,80,.25)");
+        g.addColorStop(Math.min(1,f1+0.001), "rgba(248,81,73,.30)");
+        g.addColorStop(f2, "rgba(248,81,73,.30)");
+        g.addColorStop(Math.min(1,f2+0.001), "rgba(88,166,255,.25)");
+        g.addColorStop(1, "rgba(88,166,255,.25)");
+        return g;
+      },
+      segment:{
+        borderColor:(c)=>{
+          const d=(c.p0.parsed.x+c.p1.parsed.x)/2;
+          return phaseColor(d);
+        }
+      }
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{intersect:false,mode:"index"}, animation:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            title:(items)=>`${unit==="mi"?"Mile":"Km"} ${items[0].parsed.x.toFixed(2)}`,
+            label:(c)=>`${c.parsed.y.toFixed(0)} ft`
+          }
+        }
+      },
+      scales:{
+        x:{type:"linear",min:0,max:total,
+           title:{display:true,text:unit==="mi"?"Mile":"Kilometer",color:"#9aa7b4"},
+           ticks:{color:"#9aa7b4",stepSize: unit==="mi"?2:5},grid:{color:"#2a3441"}},
+        y:{title:{display:true,text:"Elevation (ft)",color:"#9aa7b4"},
+           ticks:{color:"#9aa7b4"},grid:{color:"#2a3441"}}
+      },
+      onHover:(evt,items)=>{
+        if(items.length){
+          const idx = items[0].index;
+          const p = DATA.route[idx];
+          posMarker.setLatLng([p.lat,p.lon]);
+          posMarker.setStyle({opacity:1,fillOpacity:1});
+        } else {
+          posMarker.setStyle({opacity:0,fillOpacity:0});
+        }
+      }
+    }
+  });
+}
+
+// ===== Goals UI =====
+const goalsEl = document.getElementById("goals");
+function renderGoals(){
+  goalsEl.innerHTML = "";
+  GOALS.forEach(g=>{
+    const d = document.createElement("div");
+    d.className = "goal" + (g.key===activeGoal?" active":"");
+    d.dataset.key = g.key;
+    const paceTxt = paceStr(goalPaceSec(g)) + "/" + unitLabel();
+    d.innerHTML = `<div class="t">${g.label}</div><div class="v">${fmt(g.total)}</div><div class="p">${paceTxt}</div>`;
+    d.onclick = ()=>{ activeGoal=g.key; renderGoals(); renderSplits(); };
+    goalsEl.appendChild(d);
+  });
+}
+
+// ===== Splits =====
+function renderSplits(){
+  document.getElementById("hdrUnit").textContent = unit==="mi" ? "Mile" : "Km";
+  const goal = GOALS.find(g=>g.key===activeGoal);
+  const ms = summary();
+  const baseSec = goalPaceSec(goal);
+  // hill cost model: extra seconds per unit based on net gain
+  // tuned per-mile values; scale for km (km is shorter so smaller multipliers)
+  const scale = unit==="mi" ? 1.0 : 1/1.609344;
+  const adjusted = ms.map(m=>{
+    const net = m.end_ft - m.start_ft;
+    const extra = (net>0 ? net*0.6 : Math.max(net*0.3, -10)) * scale;
+    const rollCost = Math.max(0, (m.gain_ft - Math.abs(net)) * 0.15) * scale;
+    let split = baseSec + extra + rollCost;
+    if(m.frac < 1) split = split * m.frac; // partial last unit
+    return split;
+  });
+  // normalize so total == goal.total
+  const sum = adjusted.reduce((a,b)=>a+b,0);
+  const factor = goal.total/sum;
+  const finalSplits = adjusted.map(s=>s*factor);
+
+  const tbody = document.getElementById("splitsBody");
+  tbody.innerHTML = "";
+  let cum = 0;
+  finalSplits.forEach((s,i)=>{
+    cum += s;
+    const m = ms[i];
+    // for phase coloring: convert this unit's mile back to mi
+    const miEquiv = unit==="mi" ? m.n : m.n/1.609344;
+    const phase = phaseClass(miEquiv);
+    const isPartial = m.frac < 1;
+    const dist = m.frac;
+    const pace = s/dist;
+    const label = isPartial ? `${(m.n-1)}-${totalDist().toFixed(2)}` : m.n;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td class="seg-${phase}">${label}</td>
+      <td>${paceStr(pace)}</td>
+      <td>${fmt(s)}</td>
+      <td>${fmt(cum)}</td>
+      <td style="color:#9aa7b4">${m.end_ft.toFixed(0)}</td>`;
+    tbody.appendChild(tr);
+  });
+  const tr = document.createElement("tr");
+  tr.style.fontWeight = "700";
+  tr.innerHTML = `<td>Total</td><td>${paceStr(goalPaceSec(goal))}</td><td></td><td>${fmt(cum)}</td><td></td>`;
+  tbody.appendChild(tr);
+}
+
+// ===== Cues =====
+function renderCues(){
+  const list = document.getElementById("cuesList");
+  list.innerHTML = "";
+  const cs = cues();
+  Object.entries(cs).forEach(([n,t])=>{
+    const d = document.createElement("div");
+    d.className = "cue";
+    d.innerHTML = `<div class="m">${unit==="mi"?"Mile":"Km"} ${n}</div><div class="t">${t}</div>`;
+    list.appendChild(d);
+  });
+}
+
+// ===== Fuel =====
+const FUEL_PLAN = [
+  {miLabel:"Pre", kmLabel:"Pre", text:"1 gel + sip water 10-15 min before gun."},
+  {mi:4,  km:6.4,  text:"Gel #2 - by now you've found rhythm."},
+  {mi:8,  km:12.9, text:"Gel #3 - midway through the easy section."},
+  {mi:11, km:17.7, text:"<b>Gel #4 + full cup fluid.</b> Fuel BEFORE the climb so you climb fed, not chewing."},
+  {mi:16, km:25.7, text:"Gel #5 - bottom of the descent, before the long grind home."},
+  {mi:20, km:32.2, text:"Gel #6 - the last one. Take it before you need it."},
+  {mi:24, km:38.6, text:"Optional caffeine gel if you trained with one - last 5K push."},
+];
+function renderFuel(){
+  const list = document.getElementById("fuelList");
+  list.innerHTML = "";
+  FUEL_PLAN.forEach(f=>{
+    let label;
+    if(f.miLabel) label = f.miLabel;
+    else label = unit==="mi" ? `Mi ${f.mi}` : `Km ${f.km}`;
+    const row = document.createElement("div");
+    row.className = "fuel-row";
+    row.innerHTML = `<div class="fuel-mile">${label}</div><div class="fuel-text">${f.text}</div>`;
+    list.appendChild(row);
+  });
+}
+
+// ===== Phase + legend labels =====
+function renderPhaseLabels(){
+  const k = (mi)=> (mi*1.609344).toFixed(1);
+  if(unit==="mi"){
+    document.querySelector(".ph1").textContent = "mi 1-11";
+    document.querySelector(".ph2").textContent = "mi 12-16";
+    document.querySelector(".ph3").textContent = "mi 17-26";
+    document.querySelector(".leg-p1").textContent = "Mi 1-11 (free)";
+    document.querySelector(".leg-p2").textContent = "Mi 12-16 (hill)";
+    document.querySelector(".leg-p3").textContent = "Mi 17-26 (grind)";
+  } else {
+    document.querySelector(".ph1").textContent = "km 1-18";
+    document.querySelector(".ph2").textContent = "km 19-26";
+    document.querySelector(".ph3").textContent = "km 27-42";
+    document.querySelector(".leg-p1").textContent = "Km 1-18 (free)";
+    document.querySelector(".leg-p2").textContent = "Km 19-26 (hill)";
+    document.querySelector(".leg-p3").textContent = "Km 27-42 (grind)";
+  }
+}
+
+// ===== Header total =====
+function renderTotalDist(){
+  document.getElementById("totaldist").textContent =
+    unit==="mi" ? `${DATA.totalMi.toFixed(2)} mi` : `${DATA.totalKm.toFixed(2)} km`;
+}
+
+// ===== Tabs =====
+document.querySelectorAll(".tab").forEach(t=>{
+  t.onclick = ()=>{
+    document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x===t));
+    document.querySelectorAll(".tabpanel").forEach(p=>p.classList.toggle("active",p.dataset.tab===t.dataset.tab));
+  };
+});
+
+// ===== Unit toggle =====
+function setUnit(u){
+  unit = u;
+  document.querySelectorAll("#unitToggle button").forEach(b=>b.classList.toggle("active",b.dataset.u===u));
+  renderGoals();
+  renderSplits();
+  renderCues();
+  renderFuel();
+  renderPhaseLabels();
+  renderTotalDist();
+  renderDistanceMarkers();
+  renderAidStations();
+  renderFuelMarkers();
+  buildChart();
+}
+document.querySelectorAll("#unitToggle button").forEach(b=>{ b.onclick = ()=>setUnit(b.dataset.u); });
+
+// initial
+setUnit("km");
+</script>
+</body>
+</html>
