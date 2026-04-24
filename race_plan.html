@@ -175,9 +175,12 @@ const GOALS = [
   {key:"B", label:"Watch pred",sec_km:243}, // 4:03/km -> 2:50:55 / 2:52:19
   {key:"C", label:"Sim pace",  sec_km:248}, // 4:08/km -> 2:54:24 / 2:55:51
 ];
+// Certified marathon distance (chip-timed). GPX is ~0.22 mi longer due to GPS drift.
+const CERT_MI = 26.2188;
+const CERT_KM = 42.195;
 GOALS.forEach(g=>{
   g.sec_mi = g.sec_km * 1.609344;
-  g.total = Math.round(g.sec_mi * DATA.totalMi);
+  g.total = Math.round(g.sec_km * CERT_KM);
 });
 let activeGoal = "B";
 
@@ -357,35 +360,42 @@ function renderSplits(){
   const goal = GOALS.find(g=>g.key===activeGoal);
   const ms = summary();
   const baseSec = goalPaceSec(goal);
-  // hill cost model: extra seconds per unit based on net gain
-  // tuned per-mile values; scale for km (km is shorter so smaller multipliers)
   const scale = unit==="mi" ? 1.0 : 1/1.609344;
-  const adjusted = ms.map(m=>{
+  // Truncate to certified marathon distance for splits + total
+  const certTotal = unit==="mi" ? CERT_MI : CERT_KM;
+  const fracs = ms.map(m=>{
+    const startD = m.n - 1;          // start of this unit
+    const endD   = Math.min(m.n, certTotal);
+    return Math.max(0, endD - startD);
+  });
+  const adjusted = ms.map((m,i)=>{
+    if(fracs[i] === 0) return null;
     const net = m.end_ft - m.start_ft;
     const extra = (net>0 ? net*0.6 : Math.max(net*0.3, -10)) * scale;
     const rollCost = Math.max(0, (m.gain_ft - Math.abs(net)) * 0.15) * scale;
     let split = baseSec + extra + rollCost;
-    if(m.frac < 1) split = split * m.frac; // partial last unit
+    if(fracs[i] < 1) split = split * fracs[i];
     return split;
   });
-  // normalize so total == goal.total
-  const sum = adjusted.reduce((a,b)=>a+b,0);
-  const factor = goal.total/sum;
-  const finalSplits = adjusted.map(s=>s*factor);
+  // normalize so total == goal.total (certified marathon time)
+  const validSum = adjusted.filter(s=>s!==null).reduce((a,b)=>a+b,0);
+  const factor = goal.total/validSum;
+  const finalSplits = adjusted.map(s=> s===null ? null : s*factor);
 
   const tbody = document.getElementById("splitsBody");
   tbody.innerHTML = "";
   let cum = 0;
   finalSplits.forEach((s,i)=>{
+    if(s === null) return;
     cum += s;
     const m = ms[i];
-    // for phase coloring: convert this unit's mile back to mi
     const miEquiv = unit==="mi" ? m.n : m.n/1.609344;
     const phase = phaseClass(miEquiv);
-    const isPartial = m.frac < 1;
-    const dist = m.frac;
-    const pace = s/dist;
-    const label = isPartial ? `${(m.n-1)}-${totalDist().toFixed(2)}` : m.n;
+    const f = fracs[i];
+    const isPartial = f < 1;
+    const pace = s/f;
+    const certTotalLocal = unit==="mi" ? CERT_MI : CERT_KM;
+    const label = isPartial ? `${(m.n-1)}-${certTotalLocal.toFixed(2)}` : m.n;
     // Net elevation change for this unit
     const netFt = m.end_ft - m.start_ft;
     const netVal = unit==="mi" ? netFt : netFt * 0.3048;  // ft -> m
@@ -470,7 +480,7 @@ function renderPhaseLabels(){
 // ===== Header total =====
 function renderTotalDist(){
   document.getElementById("totaldist").textContent =
-    unit==="mi" ? `${DATA.totalMi.toFixed(2)} mi` : `${DATA.totalKm.toFixed(2)} km`;
+    unit==="mi" ? `${CERT_MI.toFixed(2)} mi (certified)` : `${CERT_KM.toFixed(3)} km (certified)`;
 }
 
 // ===== Tabs =====
