@@ -309,7 +309,7 @@ HTML = """<!doctype html>
     <div class="tabpanel active" data-tab="splits" id="panel-splits">
       <table>
         <thead><tr>
-          <th id="hdrUnit">Km</th><th>Pace</th><th>Split</th><th>Cum</th><th>Elev</th>
+          <th id="hdrUnit">Km</th><th>Pace</th><th>Split</th><th>Cum</th><th id="hdrElev">&Delta; m</th>
         </tr></thead>
         <tbody id="splitsBody"></tbody>
       </table>
@@ -549,6 +549,7 @@ function renderGoals(){
 // ===== Splits =====
 function renderSplits(){
   document.getElementById("hdrUnit").textContent = unit==="mi" ? "Mile" : "Km";
+  document.getElementById("hdrElev").innerHTML = unit==="mi" ? "&Delta; ft" : "&Delta; m";
   const goal = GOALS.find(g=>g.key===activeGoal);
   const ms = summary();
   const baseSec = goalPaceSec(goal);
@@ -581,12 +582,22 @@ function renderSplits(){
     const dist = m.frac;
     const pace = s/dist;
     const label = isPartial ? `${(m.n-1)}-${totalDist().toFixed(2)}` : m.n;
+    // Net elevation change for this unit
+    const netFt = m.end_ft - m.start_ft;
+    const netVal = unit==="mi" ? netFt : netFt * 0.3048;  // ft -> m
+    const sign = netVal > 0 ? "+" : netVal < 0 ? "" : "";
+    // Color: red for noticeable climbs, green for descents, gray for flat
+    let elevColor = "#9aa7b4";
+    if(Math.abs(netVal) >= (unit==="mi" ? 5 : 1.5)){
+      elevColor = netVal > 0 ? "#f85149" : "#3fb950";
+    }
+    const elevStr = `${sign}${netVal.toFixed(unit==="mi"?0:1)}`;
     const tr = document.createElement("tr");
     tr.innerHTML = `<td class="seg-${phase}">${label}</td>
       <td>${paceStr(pace)}</td>
       <td>${fmt(s)}</td>
       <td>${fmt(cum)}</td>
-      <td style="color:#9aa7b4">${m.end_ft.toFixed(0)}</td>`;
+      <td style="color:${elevColor}">${elevStr}</td>`;
     tbody.appendChild(tr);
   });
   const tr = document.createElement("tr");
